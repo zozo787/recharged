@@ -504,9 +504,16 @@ public:
 
         // Created at the design size, then fitted once the window knows its
         // display's pixel density and content scale.
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS: the whole screen, like any app; the layout follows its size.
+        constexpr SDL_WindowFlags kPlatformWindow = SDL_WINDOW_FULLSCREEN | SDL_WINDOW_BORDERLESS;
+#else
+        constexpr SDL_WindowFlags kPlatformWindow = 0;
+#endif
         window_ = SDL_CreateWindow(GameTitle().c_str(), int(kDefaultDesignWidth),
                                    int(kDefaultDesignHeight),
-                                   SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_HIDDEN);
+                                   SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_HIDDEN
+                                       | kPlatformWindow);
         Require(window_ != nullptr, "Cannot create launcher window");
         platform::SetApplicationIcon(window_);
         renderer_ = SDL_CreateRenderer(window_, nullptr);
@@ -712,6 +719,11 @@ private:
 
     void ApplyWindowMetrics(bool initial)
     {
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // Always the whole screen: no window size or minimum to fit.
+        (void)initial;
+        return;
+#endif
         SDL_Rect usable{};
         float width = 0.0f, height = 0.0f;
         if (!capture_ && SDL_GetDisplayUsableBounds(SDL_GetDisplayForWindow(window_), &usable))
@@ -2939,7 +2951,9 @@ private:
             DrawLabelShadowed(draw, fonts.heading, {origin.x + pad, y + FontSize(fonts.heading) + Dp(2)},
                               Col(color::text, 0.86f), rest + 2, 1.2f);
         }
+#if !defined(MSCHARGED_PLATFORM_IOS) // an iOS app does not update itself
         DrawUpdateBar(origin, size.x, pad);
+#endif
 
         // Play button and status, over the bottom of the artwork.
         const std::string blocker = PlayBlocker();

@@ -332,6 +332,13 @@ int mscharged::RunOriginalGame(int argc, char** argv,
         auto launch=suppliedLaunch ? *suppliedLaunch :
             mscharged::LoadLaunch(launchOptions,executableDirectory);
         mscharged::ApplyGameModeDisplay(launch,mscharged::UnderGamescope());
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS: always the whole screen at its own resolution; there is no
+        // window to size or remember.
+        launch.settings.fullscreen=true;
+        launch.settings.fullscreen_resolution="desktop";
+        launch.settings.remember_window=false;
+#endif
         disc=launch.disc_path;
         windowWidth=launch.settings.width;windowHeight=launch.settings.height;
         const auto& aspect = launch.settings.aspect;
