@@ -4,10 +4,13 @@ name: iOS build
 # the ios-release preset, packaged as an unsigned .ipa. Signing happens when it
 # is installed. No game data: the disc image is read on the device at run time.
 on:
+  # Documentation alone does not rebuild the app.
   push:
     branches: [ios-port]
+    paths-ignore: ['docs/**', '**.md']
   pull_request:
     branches: [ios-port]
+    paths-ignore: ['docs/**', '**.md']
   workflow_dispatch:
     inputs:
       runner:
