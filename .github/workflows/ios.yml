@@ -15,13 +15,19 @@ on:
         type: choice
         options: [macos-15-intel, macos-15]
         default: macos-15-intel
+      regions:
+        description: Game modules to build (eu, us, jp, kr, space-separated, or all)
+        type: string
+        default: eu
 
 permissions:
   contents: read
 
+# A new push waits for the running build instead of cancelling it: a cold build
+# takes hours, and its compiler cache is what makes the next one quick.
 concurrency:
   group: ios-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   ios:
@@ -42,6 +48,9 @@ jobs:
       CCACHE_BASEDIR: ${{ github.workspace }}
       CCACHE_NOHASHDIR: 'true'
       CCACHE_MAXSIZE: 3G
+      # One module per game version; the player's copy is European, so pushes
+      # build only that one (repository variable IOS_REGIONS, e.g. "all").
+      IOS_REGIONS: ${{ inputs.regions || vars.IOS_REGIONS || 'eu' }}
       # No IPHONEOS_DEPLOYMENT_TARGET here: Apple's clang reads it for every
       # compile, so the tools the build runs on this Mac (SQLite's generator,
       # Rust build scripts) would come out as iOS programs that cannot run.
@@ -111,7 +120,15 @@ jobs:
           -DCMAKE_C_COMPILER_LAUNCHER=ccache
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - name: Build for iOS
-        run: cmake --build --preset ios-release
+        run: |
+          case "$IOS_REGIONS" in all) regions="us eu jp kr" ;; *) regions="$IOS_REGIONS" ;; esac
+          targets=mscharged
+          for region in $regions; do
+            case "$region" in us|eu|jp|kr) ;; *) echo "Unknown region: $region" >&2; exit 1 ;; esac
+            targets="$targets mscharged_original_frontend_module_$region"
+          done
+          echo "Targets: $targets"
+          cmake --build --preset ios-release --target $targets
       - name: Compiler cache statistics
         if: always()
         run: ccache --show-stats || true
@@ -123,7 +140,9 @@ jobs:
           path: ${{ runner.temp }}/ccache
           key: ${{ steps.ccache.outputs.cache-primary-key }}
       - name: Package the unsigned .ipa
-        run: python tools/package_ios.py --build-dir build/ios-release --output-dir build/ios-artifacts
+        run: >-
+          python tools/package_ios.py --build-dir build/ios-release --output-dir build/ios-artifacts
+          --regions ${{ env.IOS_REGIONS }}
       - name: Check the app
         run: |
           app=build/ios-artifacts/Recharged.app
@@ -135,7 +154,9 @@ jobs:
           done
           # Unresolved imports of the incomplete decomp bind lazily in the
           # module (-undefined dynamic_lookup); list how many for the record.
-          nm -u "$app/Frameworks/recharged_game_us.so" | wc -l
+          for module in "$app"/Frameworks/recharged_game_*; do
+            echo "$module: $(nm -u "$module" | wc -l) undefined symbols"
+          done
           du -sh "$app" build/ios-artifacts/*.ipa
       - name: Upload the .ipa
         uses: actions/upload-artifact@v7

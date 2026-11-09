@@ -7,7 +7,8 @@ icon sizes come from `sips` and the SDK keys from `xcrun` when they exist.
 
 Layout of Recharged.app (SDL_GetBasePath is the app folder itself):
   recharged, Info.plist, PkgInfo, AppIcon*.png
-  Frameworks/recharged_game_{us,eu,jp,kr}.so   the game modules (one per game version)
+  Frameworks/recharged_game_{us,eu,jp,kr}.so   the game modules (one per game version;
+                                                 --regions keeps only those built)
   assets/...                                     what the desktop packages put beside the program
   LICENSE, LICENSES/...                          this port's and the dependencies' notices
 """
@@ -82,7 +83,10 @@ def info_plist(build):
     return plistlib.dumps(info, fmt=plistlib.FMT_XML)
 
 
-def package_ios(build, output, source):
+REGIONS = ("us", "eu", "jp", "kr")
+
+
+def package_ios(build, output, source, regions=REGIONS):
     build, output, source = build.resolve(), output.resolve(), source.resolve()
     cache = regular_file(build, "CMakeCache.txt").read_text()
     if not re.search(r"^CMAKE_SYSTEM_NAME:\w+=iOS$", cache, re.MULTILINE):
@@ -92,6 +96,8 @@ def package_ios(build, output, source):
     check_ios_binary(executable)
     modules = []
     for stem in MODULES:
+        if stem.rsplit("_", 1)[1] not in regions:
+            continue
         matches = [stem + suffix for suffix in (".so", ".dylib", ".bundle") if (build / (stem + suffix)).exists()]
         if len(matches) != 1:
             raise PackageError(f"Require exactly one loadable {stem} module, found {len(matches)}.")
@@ -170,11 +176,16 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--build-dir", type=Path, default=Path("build/ios-release"))
     parser.add_argument("--output-dir", type=Path, default=Path("build/ios-artifacts"))
+    parser.add_argument("--regions", nargs="+", default=["all"], metavar="REGION",
+                        help="Game modules to package: us, eu, jp, kr or all (default: all).")
     parser.add_argument("--source-dir", type=Path, default=Path(__file__).resolve().parents[1],
                         help="Port checkout (defaults to the script's repository).")
     args = parser.parse_args()
     try:
-        ipa = package_ios(args.build_dir, args.output_dir, args.source_dir)
+        regions = REGIONS if args.regions == ["all"] else tuple(dict.fromkeys(args.regions))
+        if unknown := [region for region in regions if region not in REGIONS]:
+            raise PackageError(f"Unknown region: {', '.join(unknown)} (use us, eu, jp, kr or all)")
+        ipa = package_ios(args.build_dir, args.output_dir, args.source_dir, regions)
     except (OSError, ValueError, KeyError) as error:
         print(f"Packaging failed: {error}", file=sys.stderr)
         return 1
