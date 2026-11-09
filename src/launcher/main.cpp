@@ -8167,7 +8167,7 @@ private:
             Row("Performance stats", "Records frame times for each game session, with the arena and settings, and a summary per arena. Saves a CSV and summary in the logs folder; testers can share them.");
             if (Toggle("##frame_logging", &draft_.frame_logging)) dirty_ = true;
 
-            const auto recordings = base_ / "logs";
+            const auto recordings = UserFolder(base_) / "logs";
             const auto recordingsFolder = PathUtf8(recordings);
             Row("Frame recordings", recordingsFolder.c_str());
             if (SecondaryButton("open_frame_recordings", "Open folder", {ImGui::GetContentRegionAvail().x, Dp(40)},
@@ -8700,7 +8700,7 @@ private:
         if (SecondaryButton("open_logs", "Open logs folder", button, true, Icon::Folder))
         {
             const fs::path log = platform::SessionLogPath();
-            const fs::path folder = log.empty() ? base_ / "logs" : log.parent_path();
+            const fs::path folder = log.empty() ? UserFolder(base_) / "logs" : log.parent_path();
             std::error_code error;
             fs::create_directories(folder, error);
             OpenPath(folder);
@@ -8931,6 +8931,19 @@ int main(int argc, char** argv)
     SetAppName();
 #if defined(__APPLE__) && !defined(MSCHARGED_PLATFORM_IOS)
     if (int code = 0; mscharged::platform::LeaveAppTranslocation(code)) return code;
+#endif
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // iOS starts apps in "/": work in Documents, where the player's files are
+    // (relative paths of recharged.ini, screenshots/).
+    {
+        std::error_code error;
+        const auto documents = mscharged::UserFolder({});
+        if (!documents.empty())
+        {
+            std::filesystem::create_directories(documents, error);
+            std::filesystem::current_path(documents, error);
+        }
+    }
 #endif
     try
     {

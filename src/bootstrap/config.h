@@ -316,7 +316,11 @@ void SaveConfig(ConfigFile& file, const Settings& settings);
 std::filesystem::path ResolveDiscPath(const Settings& settings, const std::filesystem::path& config);
 // game.gamecube_disc's path, empty when none is set.
 std::filesystem::path ResolveGameCubeDiscPath(const Settings& settings, const std::filesystem::path& config);
-// Saves, shader caches and the game clock, beside the executable: data/, or
+// Where the player's files go: settings, data/, logs and screenshots. Beside
+// the executable, except on iOS, where Recharged.app is signed and read-only:
+// there the app's Documents folder, which the Files app shows.
+std::filesystem::path UserFolder(const std::filesystem::path& executable_directory);
+// Saves, shader caches and the game clock, in the user folder: data/, or
 // the original-main-credits-data/ of earlier builds until it has been moved.
 std::filesystem::path DataFolder(const std::filesystem::path& executable_directory);
 // Renames the earlier builds' folder to data/ once. Returns false and leaves

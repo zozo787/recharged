@@ -1321,7 +1321,7 @@ int mscharged::RunOriginalGame(int argc, char** argv,
         // working directory.
         const auto sessionLog=mscharged::platform::SessionLogPath();
         const auto frameTiming=mscharged::runtime::FrameTimingLog::FromSettings(launch.settings.frame_logging,
-            sessionLog.empty() ? executableDirectory/"logs" : sessionLog.parent_path());
+            sessionLog.empty() ? mscharged::UserFolder(executableDirectory)/"logs" : sessionLog.parent_path());
         auto* takeStadium=reinterpret_cast<int(*)()>(
             mscharged::platform::FindNativeModuleSymbol(module,"charged_take_stadium"));
         if(frameTiming)
