@@ -45,8 +45,6 @@ jobs:
       run:
         shell: bash
     env:
-      CMAKE_BUILD_PARALLEL_LEVEL: 3
-      CARGO_BUILD_JOBS: 3
       CARGO_TERM_COLOR: always
       CCACHE_BASEDIR: ${{ github.workspace }}
       CCACHE_NOHASHDIR: 'true'
@@ -100,8 +98,42 @@ jobs:
           cargo --version
       - name: Prepare pinned dependencies
         run: python tools/setup_dependencies.py --shallow
+      # One job per core: 4 on the Intel runner, 3 on Apple Silicon.
       - name: Place compiler cache
-        run: echo "CCACHE_DIR=$RUNNER_TEMP/ccache" >> "$GITHUB_ENV"
+        run: |
+          echo "CCACHE_DIR=$RUNNER_TEMP/ccache" >> "$GITHUB_ENV"
+          cores=$(sysctl -n hw.ncpu)
+          echo "CMAKE_BUILD_PARALLEL_LEVEL=$cores" >> "$GITHUB_ENV"
+          echo "CARGO_BUILD_JOBS=$cores" >> "$GITHUB_ENV"
+          echo "Cores: $cores"
+      # The prepared (patched) dependency sources and SQLite's generated
+      # amalgamation depend only on the pinned submodules, the patches and the
+      # preparation tools: preparing them took most of the configure step. The
+      # preparers check what they find and redo anything that does not match.
+      - name: Key the prepared sources
+        id: prepared
+        run: |
+          key=$( { git ls-tree -r HEAD extern; git ls-files -s patches tools/prepare_sources.py \
+                   tools/prepare_sqlite.py tools/format_prepared.py .gitmodules; } | shasum -a 256 | cut -c1-24)
+          echo "key=prepared-ios-${{ runner.arch }}-$key" >> "$GITHUB_OUTPUT"
+      - name: Restore prepared sources
+        id: prepared-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            build/ios-release/prepared
+            build/ios-release/generated/sqlite-source
+          key: ${{ steps.prepared.outputs.key }}
+      # nod's Rust build (crates and their compiled output), resumed by Cargo.
+      - name: Restore Rust build
+        id: cargo-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            build/ios-release/cargo
+          key: cargo-ios-${{ runner.arch }}-${{ steps.prepared.outputs.key }}-${{ github.sha }}
+          restore-keys: cargo-ios-${{ runner.arch }}-${{ steps.prepared.outputs.key }}-
       - name: Restore compiler cache
         id: ccache
         uses: actions/cache/restore@v4
@@ -142,6 +174,22 @@ jobs:
         with:
           path: ${{ runner.temp }}/ccache
           key: ${{ steps.ccache.outputs.cache-primary-key }}
+      - name: Save prepared sources
+        if: always() && steps.prepared-cache.outputs.cache-hit != 'true' && hashFiles('build/ios-release/prepared/**/manifest.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            build/ios-release/prepared
+            build/ios-release/generated/sqlite-source
+          key: ${{ steps.prepared.outputs.key }}
+      - name: Save Rust build
+        if: always() && steps.cargo-cache.outputs.cache-hit != 'true' && hashFiles('build/ios-release/cargo/**') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            build/ios-release/cargo
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
       - name: Package the unsigned .ipa
         run: >-
           python tools/package_ios.py --build-dir build/ios-release --output-dir build/ios-artifacts
