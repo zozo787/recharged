@@ -699,7 +699,13 @@ public:
             ++frame;
             if (options_.smoke_test && frame >= smoke_frames) quit = true;
             const auto elapsed = SDL_GetTicks() - frame_start;
+#if !defined(MSCHARGED_PLATFORM_IOS)
             if (elapsed < 16) SDL_Delay(Uint32(16 - elapsed));
+#else
+            // iOS: vsync alone paces the frames. The extra wait for 60 Hz fell
+            // between a 120 Hz screen's refreshes and made scrolling judder.
+            (void)elapsed;
+#endif
         }
         if (options_.smoke_test)
             std::cout << "Launcher rendered all " << int(PageCount) << " pages and loaded its resources.\n";

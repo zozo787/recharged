@@ -16,8 +16,12 @@ on:
       runner:
         description: macOS runner (both cross-compile for iOS devices)
         type: choice
-        options: [macos-15-intel, macos-15]
+        options: [macos-15-intel, macos-15, macos-26]
         default: macos-15-intel
+      xcode:
+        description: Xcode to build with (a version such as 26.3, or newest on the runner)
+        type: string
+        default: newest
       regions:
         description: Game modules to build (eu, us, jp, kr, space-separated, or all)
         type: string
@@ -77,12 +81,20 @@ jobs:
             exit 1
           fi
       - name: Install macOS tools
+        env:
+          XCODE: ${{ inputs.xcode || vars.IOS_XCODE || 'newest' }}
         run: |
           uname -m
-          # The same Xcode as the macOS packages (Aurora needs std::jthread).
-          # Xcode 26.3 where the image has it, else its newest Xcode 26.
-          xcode=/Applications/Xcode_26.3.app
-          [ -d "$xcode" ] || xcode=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          # The newest Xcode on the image by default: its iOS SDK must know the
+          # newest devices, or iOS runs the app in a compatibility frame (the
+          # foldable iPhone, docs/IOS_PORT.md). A version can be asked for.
+          ls -d /Applications/Xcode*.app
+          if [ "$XCODE" = newest ]; then
+            xcode=$(ls -d /Applications/Xcode_[0-9]*.app | grep -v -i beta | sort -V | tail -1)
+          else
+            xcode=/Applications/Xcode_$XCODE.app
+          fi
+          echo "Selected: $xcode"
           sudo xcode-select -s "$xcode"
           xcrun --sdk iphoneos --show-sdk-version
           clang++ --version
