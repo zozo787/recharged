@@ -42,9 +42,9 @@ jobs:
       CCACHE_BASEDIR: ${{ github.workspace }}
       CCACHE_NOHASHDIR: 'true'
       CCACHE_MAXSIZE: 3G
-      # Same value as CMAKE_OSX_DEPLOYMENT_TARGET in the ios-release preset:
-      # cc-rs (C code in nod's Rust dependencies) reads it.
-      IPHONEOS_DEPLOYMENT_TARGET: '18.0'
+      # No IPHONEOS_DEPLOYMENT_TARGET here: Apple's clang reads it for every
+      # compile, so the tools the build runs on this Mac (SQLite's generator,
+      # Rust build scripts) would come out as iOS programs that cannot run.
     steps:
       - uses: actions/checkout@v6
         with:

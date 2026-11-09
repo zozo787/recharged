@@ -52,8 +52,12 @@ def generate(root, build, cc, make, tclsh, *, check=False, discard_generated=Fal
             command = [str(make), "-f", str(source / "Makefile.linux-generic"),
                        f"TOP={source}", f"B.cc={cc}", f"B.tclsh={tclsh}",
                        f"TCLSH_CMD={tclsh}", "CFLAGS=", "sqlite3.c", "sqlite3.h"]
+            # The generator's tools run on this machine: Apple's clang would build
+            # them for iOS (and they could not run) if a cross build's deployment
+            # target or SDK reached it through the environment.
             environment = {k: v for k, v in os.environ.items()
-                           if k not in ("MAKEFLAGS", "MFLAGS", "GNUMAKEFLAGS")}
+                           if k not in ("MAKEFLAGS", "MFLAGS", "GNUMAKEFLAGS", "SDKROOT")
+                           and not k.endswith("_DEPLOYMENT_TARGET")}
             with log.open("w") as output:
                 result = subprocess.run(command, cwd=work, env=environment,
                                         stdout=output, stderr=subprocess.STDOUT)
