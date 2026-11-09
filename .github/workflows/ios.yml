@@ -154,6 +154,8 @@ jobs:
           -DMSCHARGED_AUTOPILOT=OFF
           -DCMAKE_C_COMPILER_LAUNCHER=ccache
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DCMAKE_OBJC_COMPILER_LAUNCHER=ccache
+          -DCMAKE_OBJCXX_COMPILER_LAUNCHER=ccache
       - name: Build for iOS
         run: |
           case "$IOS_REGIONS" in all) regions="us eu jp kr" ;; *) regions="$IOS_REGIONS" ;; esac
