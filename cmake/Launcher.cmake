@@ -91,6 +91,9 @@ if(MSCHARGED_IOS)
     # iOS: tools/package_ios.py makes Recharged.app (program, Info.plist, icon,
     # assets and the game modules in Frameworks) and the unsigned .ipa from
     # this build; signing happens when the app is installed (docs/IOS_PORT.md).
+    # CMake would make recharged.app around the program by default on iOS; the
+    # program stays plain beside its assets, as on the other systems.
+    set_target_properties(mscharged PROPERTIES MACOSX_BUNDLE OFF)
     set(MSCHARGED_IOS_BUNDLE_IDENTIFIER "io.github.zozo787.recharged" CACHE STRING
         "Bundle identifier of the iOS app (sideloading tools may replace it)")
     configure_file(cmake/Info-iOS.plist.in generated/mscharged/Info-iOS.plist @ONLY)

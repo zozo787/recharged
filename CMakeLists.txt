@@ -253,6 +253,12 @@ function(mscharged_add_nod)
     set(CORROSION_BUILD_TESTS OFF)
     set(NOD_ENABLE_INSTALL OFF)
     add_subdirectory("${MSCHARGED_NOD_PREPARED}" "${CMAKE_CURRENT_BINARY_DIR}/extern/nod")
+    if(MSCHARGED_IOS)
+        # cc-rs (the C in nod's Rust dependencies) otherwise targets the SDK's
+        # own iOS version. Only Cargo gets it: Apple's clang would also build
+        # the host's tools for iOS if it were in the whole build's environment.
+        corrosion_set_env_vars(nod "IPHONEOS_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    endif()
     include(cmake/MacOSLinkLibraries.cmake)
     mscharged_remove_macos_implicit_system_library(nod-static)
 endfunction()
