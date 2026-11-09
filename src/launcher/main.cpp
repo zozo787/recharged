@@ -18,6 +18,7 @@
 #include "launcher/player_lineup.h"
 #include "launcher/release_banner.h"
 #include "launcher/release_notes.h"
+#include "launcher/touch_scroll.h"
 #include "launcher/ui_kit.h"
 #include "launcher/ui_metrics.h"
 #include "launcher/update_check.h"
@@ -617,6 +618,7 @@ public:
             SDL_Event event;
             while (SDL_PollEvent(&event))
             {
+                if (touch_scroll_.Filter(event)) continue;
                 const bool capturing = capture_action_ >= 0 || hotkey_capture_ >= 0;
                 if (!capturing || (event.type != SDL_EVENT_KEY_DOWN && event.type != SDL_EVENT_TEXT_INPUT))
                     ImGui_ImplSDL3_ProcessEvent(&event);
@@ -667,6 +669,7 @@ public:
             ImGui_ImplSDLRenderer3_NewFrame();
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
+            touch_scroll_.Update();
             if (options_.smoke_test) page_ = int(frame / 4) % PageCount;
             hero_visible_ = false;
             Draw(quit);
@@ -8819,6 +8822,11 @@ private:
     int page_ = PagePlay;
     int setup_page_ = PageMiis; // the Online/Match setup page its row opens
     bool close_requested_ = false;
+#if defined(MSCHARGED_PLATFORM_IOS)
+    TouchScroll touch_scroll_{true}; // finger drags scroll the lists
+#else
+    TouchScroll touch_scroll_{false};
+#endif
     bool pending_ = false;
     bool region_prompt_ = false;
     DiscCheck check_;

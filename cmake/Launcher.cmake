@@ -78,7 +78,8 @@ target_compile_features(charged_match_presets PUBLIC cxx_std_17)
 target_link_libraries(charged_match_presets PUBLIC charged_host)
 # New Miis for players without any (the Miis page).
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/MiiMaker.cmake")
-add_executable(mscharged src/launcher/main.cpp src/launcher/ui_kit.cpp src/launcher/release_notes_view.cpp)
+add_executable(mscharged src/launcher/main.cpp src/launcher/ui_kit.cpp src/launcher/release_notes_view.cpp
+    src/launcher/touch_scroll.cpp)
 # The program players start: recharged (recharged.exe). The target keeps its old name.
 # On Windows it is a Windows (GUI) program, so no console opens with it (#61).
 set_target_properties(mscharged PROPERTIES OUTPUT_NAME recharged WIN32_EXECUTABLE TRUE)
