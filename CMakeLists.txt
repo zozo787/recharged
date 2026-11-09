@@ -24,6 +24,18 @@ if(APPLE AND POLICY CMP0156)
 endif()
 include(cmake/MacOSDeploymentTarget.cmake)
 mscharged_set_macos_deployment_target()
+# iOS/iPadOS (docs/IOS_PORT.md, preset ios-release): an Apple target like
+# macOS, without AppKit, IOKit, other processes or in-place updates. Sources
+# test MSCHARGED_PLATFORM_IOS; macOS-only code keeps testing __APPLE__ beside it.
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set(MSCHARGED_IOS ON)
+    if(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+        message(FATAL_ERROR "iOS builds need CMAKE_OSX_DEPLOYMENT_TARGET (use the ios-release preset)")
+    endif()
+    add_compile_definitions(MSCHARGED_PLATFORM_IOS=1)
+else()
+    set(MSCHARGED_IOS OFF)
+endif()
 # Release version; the build appends +g<commit> and .dirty for local changes.
 set(MSCHARGED_PORT_VERSION "${PROJECT_VERSION}")
 # Where a build comes from, for the launcher's About page and update check.
@@ -108,9 +120,8 @@ if(MSCHARGED_BUILD_SCENE_PREVIEW)
     set(MSCHARGED_BUILD_GX_CHECK ON)
 endif()
 if(MSCHARGED_BUILD_GX_CHECK)
-    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin"
-            AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        message(FATAL_ERROR "The GX runtime selects Linux/Vulkan, macOS/Metal or Windows/Vulkan")
+    if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Linux|Darwin|iOS|Windows)$")
+        message(FATAL_ERROR "The GX runtime selects Linux/Vulkan, macOS or iOS/Metal, or Windows/Vulkan")
     endif()
     if(MSCHARGED_BUILD_THP_AUDIO_DIAGNOSTIC AND NOT MSCHARGED_BUILD_GAME_STARTUP)
     message(FATAL_ERROR "Use the startup preset for the temporary original movie audio diagnostic")

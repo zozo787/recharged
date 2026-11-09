@@ -7,6 +7,8 @@ target_compile_features(charged_system_usage PUBLIC cxx_std_17)
 target_link_libraries(charged_system_usage PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
 if(WIN32)
     target_link_libraries(charged_system_usage PRIVATE pdh)
+elseif(MSCHARGED_IOS)
+    # No IOKit on iOS: the processor's load only (src/platform/system_usage.cpp).
 elseif(APPLE)
     target_link_libraries(charged_system_usage PRIVATE "-framework IOKit" "-framework CoreFoundation")
 endif()

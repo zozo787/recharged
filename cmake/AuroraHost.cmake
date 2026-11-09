@@ -73,7 +73,7 @@ function(mscharged_add_aurora_host)
     if(TARGET aurora_mtx AND CMAKE_C_COMPILER_ID MATCHES "Clang|GNU" AND NOT MSVC)
         target_compile_options(aurora_mtx PRIVATE -ffp-contract=off)
     endif()
-    if(CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    if(CMAKE_SYSTEM_NAME MATCHES "^(Darwin|iOS)$" AND CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
         # The Apple SDK deprecates sprintf even for Tracy's bounded case: a
         # uint32_t thread ID (at most 10 digits) in a 256-byte buffer. Keep this
         # exception in the amalgamated client's own source directory.

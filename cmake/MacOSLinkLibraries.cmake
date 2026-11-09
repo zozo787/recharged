@@ -4,7 +4,7 @@ include_guard(GLOBAL)
 # AppleClang already supplies libSystem; keep the remaining Rust requirements
 # and remove only that duplicate when both native compiler drivers provide it.
 function(mscharged_remove_macos_implicit_system_library target)
-    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR
+    if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Darwin|iOS)$" OR
             NOT CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang" OR
             NOT "System" IN_LIST CMAKE_C_IMPLICIT_LINK_LIBRARIES OR
             NOT "System" IN_LIST CMAKE_CXX_IMPLICIT_LINK_LIBRARIES)

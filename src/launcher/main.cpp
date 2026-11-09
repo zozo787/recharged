@@ -31,7 +31,7 @@
 #include "platform/pc_languages.h"
 #include "platform/console_verbosity.h"
 #include "platform/log_window.h"
-#ifdef __APPLE__
+#if defined(__APPLE__) && !defined(MSCHARGED_PLATFORM_IOS)
 #include "platform/macos_app.h"
 #endif
 #include "platform/app_icon.h"
@@ -120,6 +120,8 @@ BuildIdentity CurrentBuild()
     identity.commit_time = build::commit_time;
 #if defined(_WIN32)
     identity.package = "windows";
+#elif defined(MSCHARGED_PLATFORM_IOS)
+    identity.package = "ios";
 #elif defined(__APPLE__)
     identity.package = "macos";
 #else
@@ -8927,7 +8929,7 @@ int main(int argc, char** argv)
     mscharged::platform::ConnectStandardStreams();
     Options options;
     SetAppName();
-#ifdef __APPLE__
+#if defined(__APPLE__) && !defined(MSCHARGED_PLATFORM_IOS)
     if (int code = 0; mscharged::platform::LeaveAppTranslocation(code)) return code;
 #endif
     try

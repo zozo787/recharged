@@ -32,7 +32,7 @@ endfunction()
 # party targets keep their diagnostics. Linux (including Clang) and Windows
 # retain their existing compiler options.
 function(mscharged_apply_macos_original_warning_policy)
-    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR
+    if(NOT CMAKE_SYSTEM_NAME MATCHES "^(Darwin|iOS)$" OR
             NOT CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
         return()
     endif()

@@ -1,0 +1,143 @@
+name: iOS build
+
+# The iOS/iPadOS port (docs/IOS_PORT.md): cross-compiled on a macOS runner with
+# the ios-release preset, packaged as an unsigned .ipa. Signing happens when it
+# is installed. No game data: the disc image is read on the device at run time.
+on:
+  push:
+    branches: [ios-port]
+  pull_request:
+    branches: [ios-port]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    name: ios-arm64
+    runs-on: macos-15
+    timeout-minutes: 150
+    defaults:
+      run:
+        shell: bash
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: 3
+      CARGO_BUILD_JOBS: 3
+      CARGO_TERM_COLOR: always
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_NOHASHDIR: 'true'
+      CCACHE_MAXSIZE: 3G
+      # Same value as CMAKE_OSX_DEPLOYMENT_TARGET in the ios-release preset:
+      # cc-rs (C code in nod's Rust dependencies) reads it.
+      IPHONEOS_DEPLOYMENT_TARGET: '18.0'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          submodules: false
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # The disc image and the game's files stay on the player's device.
+      - name: Refuse committed game data
+        run: |
+          if git ls-files | grep -iE '\.(iso|gcm|rvz|wia|wbfs|ciso|gcz|tgc|nfs|dol|elf)$'; then
+            echo "Game data is committed; remove it from Git (and its history)." >&2
+            exit 1
+          fi
+          if git ls-files game | grep -v '^game/\.gitkeep$'; then
+            echo "Only game/.gitkeep belongs in Git." >&2
+            exit 1
+          fi
+      - name: Install macOS tools
+        run: |
+          test "$(uname -m)" = arm64
+          # The same Xcode as the macOS packages (Aurora needs std::jthread).
+          sudo xcode-select -s /Applications/Xcode_26.3.app
+          xcrun --sdk iphoneos --show-sdk-version
+          clang++ --version
+          brew install cmake ninja tcl-tk ccache
+          echo "$(brew --prefix tcl-tk)/bin" >> "$GITHUB_PATH"
+          echo 'CC=clang' >> "$GITHUB_ENV"
+          echo 'CXX=clang++' >> "$GITHUB_ENV"
+      - name: Select Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add aarch64-apple-ios
+          cargo --version
+      - name: Prepare pinned dependencies
+        run: python tools/setup_dependencies.py --shallow
+      - name: Place compiler cache
+        run: echo "CCACHE_DIR=$RUNNER_TEMP/ccache" >> "$GITHUB_ENV"
+      - name: Restore compiler cache
+        id: ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-ios-arm64-${{ github.sha }}
+          restore-keys: ccache-ios-arm64-
+      # A dev build: no update channel (iOS apps do not replace themselves) and
+      # no Discord status.
+      - name: Configure for iOS
+        run: >-
+          cmake --preset ios-release
+          -DMSCHARGED_FORMAT_PREPARED_SOURCES=OFF
+          -DMSCHARGED_BUILD_CHANNEL=dev
+          -DMSCHARGED_BUILD_REPOSITORY=${{ github.repository }}
+          -DMSCHARGED_BUILD_RUN=${{ github.run_id }}
+          -DMSCHARGED_BUILD_TIME=$(date -u +%s)
+          -DMSCHARGED_AUTOPILOT=OFF
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      - name: Build for iOS
+        run: cmake --build --preset ios-release
+      - name: Compiler cache statistics
+        if: always()
+        run: ccache --show-stats || true
+      # Also after a failed build: the next run resumes from it.
+      - name: Save compiler cache
+        if: always() && steps.ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ steps.ccache.outputs.cache-primary-key }}
+      - name: Package the unsigned .ipa
+        run: python tools/package_ios.py --build-dir build/ios-release --output-dir build/ios-artifacts
+      - name: Check the app
+        run: |
+          app=build/ios-artifacts/Recharged.app
+          plutil -lint "$app/Info.plist"
+          lipo -archs "$app/recharged"
+          vtool -show-build "$app/recharged" | tee /dev/stderr | grep -q 'platform IOS$'
+          for module in "$app"/Frameworks/recharged_game_*; do
+            file "$module"
+          done
+          # Unresolved imports of the incomplete decomp bind lazily in the
+          # module (-undefined dynamic_lookup); list how many for the record.
+          nm -u "$app/Frameworks/recharged_game_us.so" | wc -l
+          du -sh "$app" build/ios-artifacts/*.ipa
+      - name: Upload the .ipa
+        uses: actions/upload-artifact@v7
+        with:
+          path: build/ios-artifacts/*.ipa
+          archive: false
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload configure diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: configure-ios-arm64-${{ github.sha }}
+          path: |
+            build/ios-release/CMakeFiles/CMakeConfigureLog.yaml
+            build/ios-release/sqlite-generation.log
+          if-no-files-found: ignore
+          retention-days: 7
