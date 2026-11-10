@@ -21,8 +21,9 @@ namespace mscharged::runtime {
 // bootstrap/gamepad_actions.h: the stick is the Nunchuk stick, A/B the Remote's
 // A/B, C and Z the Nunchuk buttons, "Tacle" shakes the Remote (hit an
 // opponent), "Objet" shakes the Nunchuk (switch items), + pauses and the small
-// pad is the D-pad. Hidden, and the virtual gamepad removed, while a physical
-// controller is connected. Use it on the presentation thread, between frames.
+// pad is the D-pad. Created only when a player chose the touch screen
+// (controls.playerN = touch), before the input owner sets up the players.
+// Use it on the presentation thread, between frames.
 class TouchControls {
 public:
     // Turns off SDL's mouse events from touches (they would also be read as
@@ -36,6 +37,9 @@ public:
     // fingers to the virtual gamepad.
     void Service(float width, float height);
     bool Visible() const { return visible_; }
+    // The virtual gamepad's SDL joystick id (0 when SDL refused it), which the
+    // input owner gives the touch player's channel (NativePlayers::touch_id).
+    std::uint32_t JoystickId() const { return id_; }
     // Changes whenever the drawing changes.
     std::uint64_t Revision() const { return revision_; }
     // Into the overlay, in surface pixels. `font` labels the buttons.

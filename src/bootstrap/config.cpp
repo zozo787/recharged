@@ -242,7 +242,11 @@ Settings Decode(const Values& values)
         if (it == values.end()) continue;
         if (platform::IsBluetoothWiimoteId(it->second)) { s.players[n] = it->second; continue; }
         choice(key.c_str(), s.players[n], {"keyboard", "remote1", "remote2", "remote3", "remote4",
-                                            "gamepad1", "gamepad2", "gamepad3", "gamepad4", "off"});
+                                            "gamepad1", "gamepad2", "gamepad3", "gamepad4",
+#if defined(MSCHARGED_PLATFORM_IOS)
+                                            "touch", // the on-screen controls (runtime/touch_controls.h)
+#endif
+                                            "off"});
     }
     // [keyboard] and [gamepadN]: one or two names per action, separated by " | ".
     const auto names = [&](const std::string& key, std::string& value, const char* what) {

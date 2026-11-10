@@ -6005,6 +6005,7 @@ private:
 
         const auto name = [&](const std::string& device) {
             if (device == "keyboard") return std::string("Keyboard & mouse");
+            if (device == "touch") return std::string("Touch screen");
             if (device == "off") return std::string("Off");
             if (device.rfind("gamepad", 0) == 0)
             {
@@ -6058,6 +6059,9 @@ private:
                             dirty_ = true;
                         }
                     };
+#if defined(MSCHARGED_PLATFORM_IOS)
+                    option("touch"); // the on-screen controls, always there
+#endif
                     option("keyboard");
                     // Connected Wii Remotes, then this player's remote when it is away.
                     for (const auto& remote : status.remotes) option(remote.id);

@@ -5,6 +5,7 @@
 #include "platform/stm_device.h"
 
 #include <array>
+#include <cstdint>
 #include <map>
 #include <optional>
 #include <string>
@@ -43,6 +44,11 @@ struct NativePlayers {
     std::map<std::string, int> remotes;
     // WPAD channel of the n-th connected standard gamepad, or -1.
     std::array<int, 4> gamepads{-1, -1, -1, -1};
+    // iOS: WPAD channel of the on-screen touch controls (controls.playerN =
+    // touch), or -1, and their virtual gamepad's SDL joystick id (0: none).
+    // Always connected: they never drop out and are not counted as a gamepad.
+    int touch = -1;
+    std::uint32_t touch_id = 0;
     // controls.mouse_pointer: the mouse also points for player 1 when that
     // player is a Wii Remote or gamepad and plays alone.
     bool mouse_with_controller = false;

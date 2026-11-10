@@ -749,6 +749,7 @@ int mscharged::RunOriginalGame(int argc, char** argv,
         for (int player = 0; player < 4; ++player) {
             const auto& device = launch.settings.players[player];
             if (device == "keyboard") players.keyboard = player;
+            else if (device == "touch") players.touch = player; // iOS on-screen controls
             else if (device.rfind("gamepad", 0) == 0) players.gamepads[device.back() - '1'] = player;
             else if (device != "off") players.remotes[device] = player;
         }
@@ -776,12 +777,14 @@ int mscharged::RunOriginalGame(int argc, char** argv,
         wpad.remote_speaker_reg01=release->code==mscharged::GameCode::Europe ? 0x08 : 0x80;
         wpad.bluetooth_search=launch.settings.bluetooth_search;
 #if defined(MSCHARGED_PLATFORM_IOS)
-        // iOS: a stick and buttons on the screen, hidden while a controller
-        // is connected (runtime/touch_controls.h). Created before the input
-        // owner counts the connected controllers: with none it would turn
-        // gamepads off for the whole run, the touch controls' one included.
+        // iOS: a stick and buttons on the screen for the player who chose the
+        // touch screen (runtime/touch_controls.h). Created before the input
+        // owner, which gives that player's channel to their virtual gamepad.
         std::optional<mscharged::runtime::TouchControls> touchControls;
-        if(nativeSend) touchControls.emplace();
+        if(nativeSend && players.touch>=0) {
+            touchControls.emplace();
+            players.touch_id=touchControls->JoystickId();
+        }
 #endif
         mscharged::platform::InitializeNativeHardwareInput(host.window,wpad,
             mscharged::platform::GetNativeSTMInput(), desktop, players);

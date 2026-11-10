@@ -45,22 +45,6 @@ constexpr float kHitSlop = 1.25f;
 // The stick takes fingers that land in this left part of the screen.
 constexpr float kStickZone = 0.45f;
 
-// The name of a connected physical controller, or empty when there is none.
-std::string PhysicalGamepad(SDL_JoystickID own)
-{
-    int count = 0;
-    SDL_JoystickID* ids = SDL_GetGamepads(&count);
-    if (!ids) return {};
-    std::string found;
-    for (int n = 0; n < count && found.empty(); ++n)
-        if (ids[n] != own && !SDL_IsJoystickVirtual(ids[n])) {
-            const char* name = SDL_GetGamepadNameForID(ids[n]);
-            found = name && *name ? name : "unnamed controller";
-        }
-    SDL_free(ids);
-    return found;
-}
-
 void Log(const char* format, ...) SDL_PRINTF_VARARG_FUNC(1);
 void Log(const char* format, ...)
 {
@@ -85,13 +69,9 @@ TouchControls::TouchControls()
     gamepads_ = SDL_InitSubSystem(SDL_INIT_GAMEPAD);
     watching_ = SDL_AddEventWatch(Watch, this);
     Log(watching_ ? "on" : "no event watch: %s", SDL_GetError());
-    // Now, before the game counts its controllers (platform/hardware_owner.cpp):
-    // with none connected at start it turns gamepads off for the whole run
-    // and keyboard & mouse becomes player 1, so a virtual gamepad attached on
-    // the first frame was never read.
-    const std::string physical = PhysicalGamepad(0);
-    if (physical.empty()) Attach();
-    else Log("not attached at start: %s is connected", physical.c_str());
+    // Now, before the input owner sets up the players: the touch player's
+    // channel goes to this virtual gamepad's id (platform/hardware_owner.cpp).
+    Attach();
 }
 
 TouchControls::~TouchControls()
@@ -239,24 +219,9 @@ void TouchControls::Service(float width, float height)
         }
     }
 
-    // A physical controller takes over: no drawing and no second gamepad.
-    const std::string physical = PhysicalGamepad(id_);
-    const bool visible = physical.empty();
-    if (visible != visible_ || first) {
-        visible_ = visible;
-        ++revision_;
-        if (visible) Log("shown");
-        else Log("hidden while %s is connected", physical.c_str());
-    }
-    if (!visible_) {
-        Detach();
-        std::lock_guard lock(mutex_);
-        for (auto& [id, finger] : fingers_) finger.assigned = true, finger.control = None, finger.stick = false;
-        pressed_ = {};
-        stickActive_ = false;
-        return;
-    }
-    Attach();
+    // A player chose the touch screen (controls.playerN = touch): the controls
+    // stay, whatever other controllers are connected.
+    if (first) Log("shown");
 
     std::array<bool, ControlCount> pressed{};
     bool stickActive = false;

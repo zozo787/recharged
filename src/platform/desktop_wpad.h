@@ -41,6 +41,10 @@ struct DesktopWpadSettings {
     // `gamepad_players` every pad takes the lowest free channel, buttons only.
     bool gamepad_players = false;
     std::array<int, 4> gamepad_channels{-1, -1, -1, -1};
+    // iOS touch controls: the gamepad slot kept for their virtual gamepad
+    // (SDL joystick id touch_id), which takes no other slot; -1: none.
+    int touch_slot = -1;
+    std::uint32_t touch_id = 0;
     // Buttons and sticks of the n-th gamepad (its profile, controls.gamepadN_profile).
     // With gyro_pointer a pad that has a gyro points with it instead of the stick.
     std::array<GamepadProfile, 4> gamepad_profiles{

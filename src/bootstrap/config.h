@@ -104,7 +104,12 @@ struct Settings
     // DolphinBar slot), remote-<Bluetooth address> (a Wii Remote paired over
     // Bluetooth, e.g. remote-9ce635c69076), gamepad1-gamepad4 or off.
     // Players fill in order; each device plays once.
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // iOS: player 1 plays with the on-screen touch controls.
+    std::array<std::string, 4> players{"touch", "off", "off", "off"};
+#else
     std::array<std::string, 4> players{"keyboard", "off", "off", "off"};
+#endif
     // [keyboard]: keys of each keyboard & mouse action ("Return | Space").
     std::array<std::string, KeyActionCount> keys = DefaultKeys();
     static std::array<std::string, KeyActionCount> DefaultKeys()

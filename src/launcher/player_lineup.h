@@ -62,6 +62,7 @@ inline PlayerLineup WorstLineup(const std::array<std::string, 4>& players)
 inline std::string ShortDeviceName(const std::string& device)
 {
     if (device == "keyboard") return "keyboard & mouse";
+    if (device == "touch") return "touch screen";
     if (device.compare(0, 7, "gamepad") == 0) return "gamepad " + device.substr(7);
     return "Wii Remote";
 }
