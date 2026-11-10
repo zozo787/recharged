@@ -23,7 +23,7 @@ namespace mscharged::runtime {
 namespace {
 // Labels in the overlay font's ASCII. French: the player's language.
 constexpr const char* kLabels[TouchControls::ControlCount] = {
-    "A", "B", "C", "Z", "Tacle", "Objet", "+", "^", "v", "<", ">"};
+    "A", "B", "C", "Z", "Tacle", "Objet", "+", "HOME", "^", "v", "<", ">"};
 // Each control's gamepad input (the default layout, bootstrap/gamepad_actions.h).
 struct Input {
     int button = -1; // SDL_GamepadButton, or -1
@@ -37,6 +37,7 @@ constexpr Input kInputs[TouchControls::ControlCount] = {
     {-1, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER},    // shake the Remote: hit an opponent
     {SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, -1}, // shake the Nunchuk: switch items
     {SDL_GAMEPAD_BUTTON_START, -1},          // +
+    {SDL_GAMEPAD_BUTTON_GUIDE, -1},          // HOME
     {SDL_GAMEPAD_BUTTON_DPAD_UP, -1},
     {SDL_GAMEPAD_BUTTON_DPAD_DOWN, -1},
     {SDL_GAMEPAD_BUTTON_DPAD_LEFT, -1},
@@ -192,7 +193,8 @@ void TouchControls::Layout(float width, float height)
     buttons_[Z] = at(0.37f, 0.29f, 0.06f);
     buttons_[C] = at(0.22f, 0.41f, 0.055f);
     buttons_[Item] = at(0.07f, 0.52f, 0.05f);
-    buttons_[Plus] = {width * 0.5f, 0.07f * s, 0.04f * s};
+    buttons_[Plus] = {width * 0.5f - 0.06f * s, 0.07f * s, 0.04f * s};
+    buttons_[Home] = {width * 0.5f + 0.06f * s, 0.07f * s, 0.04f * s};
     const float padX = 0.15f * s, padY = 0.17f * s, step = 0.065f * s, padRadius = 0.035f * s;
     buttons_[Up] = {padX, padY - step, padRadius};
     buttons_[Down] = {padX, padY + step, padRadius};
@@ -384,7 +386,7 @@ void TouchControls::Draw(ImDrawList* draw, ImFont* font) const
         const auto& b = buttons_[n];
         draw->AddCircleFilled({b.x, b.y}, b.r, pressed_[n] ? fillPressed : fill);
         draw->AddCircle({b.x, b.y}, b.r, line, 0, thickness);
-        const float size = n == Hit || n == Item ? b.r * 0.55f : b.r * 0.9f;
+        const float size = n == Hit || n == Item ? b.r * 0.55f : n == Home ? b.r * 0.5f : b.r * 0.9f;
         const ImVec2 extent = font->CalcTextSizeA(size, FLT_MAX, 0, kLabels[n]);
         draw->AddText(font, size, {b.x - extent.x * 0.5f, b.y - extent.y * 0.5f}, text, kLabels[n]);
     }
