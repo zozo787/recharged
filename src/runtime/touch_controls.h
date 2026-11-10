@@ -4,6 +4,7 @@
 #include <SDL3/SDL_joystick.h>
 
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -82,6 +83,16 @@ private:
 
     SDL_JoystickID id_ = 0;
     SDL_Joystick* joystick_ = nullptr;
+
+    // Diagnostics for the session log (docs/IOS_PORT.md): what the controls
+    // see on the device. Counters guarded by mutex_.
+    unsigned fingerDowns_ = 0, resizes_ = 0;
+    float firstX_ = 0, firstY_ = 0;
+    int windowW_ = 0, windowH_ = 0;
+    unsigned loggedFingers_ = 0, loggedResizes_ = 0;
+    bool loggedService_ = false;
+    std::array<bool, ControlCount> loggedPress_{};
+    std::chrono::steady_clock::time_point lastResizeLog_{};
 };
 
 } // namespace mscharged::runtime

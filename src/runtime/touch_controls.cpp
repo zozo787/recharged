@@ -1,5 +1,7 @@
 #include "runtime/touch_controls.h"
 
+#include "platform/session_log.h"
+
 #include <SDL3/SDL_gamepad.h>
 #include <SDL3/SDL_hints.h>
 #include <SDL3/SDL_log.h>
@@ -10,6 +12,9 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
+#include <cstdarg>
+#include <cstdio>
+#include <string>
 
 namespace mscharged::runtime {
 namespace {
@@ -39,16 +44,31 @@ constexpr float kHitSlop = 1.25f;
 // The stick takes fingers that land in this left part of the screen.
 constexpr float kStickZone = 0.45f;
 
-bool PhysicalGamepad(SDL_JoystickID own)
+// The name of a connected physical controller, or empty when there is none.
+std::string PhysicalGamepad(SDL_JoystickID own)
 {
     int count = 0;
     SDL_JoystickID* ids = SDL_GetGamepads(&count);
-    if (!ids) return false;
-    bool found = false;
-    for (int n = 0; n < count && !found; ++n)
-        found = ids[n] != own && !SDL_IsJoystickVirtual(ids[n]);
+    if (!ids) return {};
+    std::string found;
+    for (int n = 0; n < count && found.empty(); ++n)
+        if (ids[n] != own && !SDL_IsJoystickVirtual(ids[n])) {
+            const char* name = SDL_GetGamepadNameForID(ids[n]);
+            found = name && *name ? name : "unnamed controller";
+        }
     SDL_free(ids);
     return found;
+}
+
+void Log(const char* format, ...) SDL_PRINTF_VARARG_FUNC(1);
+void Log(const char* format, ...)
+{
+    char line[256];
+    va_list arguments;
+    va_start(arguments, format);
+    std::vsnprintf(line, sizeof line, format, arguments);
+    va_end(arguments);
+    mscharged::platform::SessionLogLine(std::string("Touch controls: ") + line);
 }
 } // namespace
 
@@ -60,6 +80,7 @@ TouchControls::TouchControls()
     }
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
     watching_ = SDL_AddEventWatch(Watch, this);
+    Log(watching_ ? "on" : "no event watch: %s", SDL_GetError());
 }
 
 TouchControls::~TouchControls()
@@ -80,6 +101,17 @@ bool SDLCALL TouchControls::Watch(void* self, SDL_Event* event)
         auto& finger = controls.fingers_[event->tfinger.fingerID];
         finger.x = event->tfinger.x;
         finger.y = event->tfinger.y;
+        if (event->type == SDL_EVENT_FINGER_DOWN && controls.fingerDowns_++ == 0) {
+            controls.firstX_ = finger.x;
+            controls.firstY_ = finger.y;
+        }
+        break;
+    }
+    case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: {
+        std::lock_guard lock(controls.mutex_);
+        ++controls.resizes_;
+        controls.windowW_ = event->window.data1;
+        controls.windowH_ = event->window.data2;
         break;
     }
     case SDL_EVENT_FINGER_UP:
@@ -109,15 +141,17 @@ void TouchControls::Attach()
     desc.name = "Recharged touch controls";
     id_ = SDL_AttachVirtualJoystick(&desc);
     if (!id_) {
-        SDL_Log("Touch controls: no virtual gamepad: %s", SDL_GetError());
+        Log("no virtual gamepad: %s", SDL_GetError());
         return;
     }
     joystick_ = SDL_OpenJoystick(id_);
     if (!joystick_) {
-        SDL_Log("Touch controls: virtual gamepad not opened: %s", SDL_GetError());
+        Log("virtual gamepad not opened: %s", SDL_GetError());
         SDL_DetachVirtualJoystick(id_);
         id_ = 0;
+        return;
     }
+    Log("virtual gamepad %u attached (%s gamepad)", unsigned(id_), SDL_IsGamepad(id_) ? "an SDL" : "NOT an SDL");
 }
 
 void TouchControls::Detach()
@@ -174,12 +208,33 @@ void TouchControls::Service(float width, float height)
 {
     if (width <= 0 || height <= 0) return;
     if (width != width_ || height != height_) Layout(width, height);
+    const bool first = !loggedService_;
+    if (first) {
+        loggedService_ = true;
+        Log("drawing on a %.0fx%.0f surface", width, height);
+    }
+    {
+        // What reached the controls since the last frame, for the log.
+        std::lock_guard lock(mutex_);
+        if (fingerDowns_ && !loggedFingers_)
+            Log("first touch at %.2f, %.2f of the window", firstX_, firstY_);
+        loggedFingers_ = fingerDowns_;
+        const auto now = std::chrono::steady_clock::now();
+        if (resizes_ != loggedResizes_ && now - lastResizeLog_ >= std::chrono::seconds(2)) {
+            Log("game window resized %u times so far, now %dx%d pixels", resizes_, windowW_, windowH_);
+            loggedResizes_ = resizes_;
+            lastResizeLog_ = now;
+        }
+    }
 
     // A physical controller takes over: no drawing and no second gamepad.
-    const bool visible = !PhysicalGamepad(id_);
-    if (visible != visible_) {
+    const std::string physical = PhysicalGamepad(id_);
+    const bool visible = physical.empty();
+    if (visible != visible_ || first) {
         visible_ = visible;
         ++revision_;
+        if (visible) Log("shown");
+        else Log("hidden while %s is connected", physical.c_str());
     }
     if (!visible_) {
         Detach();
@@ -227,6 +282,16 @@ void TouchControls::Service(float width, float height)
         stickY = knobY = stickBase_.y;
     }
 
+    for (int n = 0; n < ControlCount; ++n)
+        if (pressed[n] && !loggedPress_[n]) {
+            loggedPress_[n] = true;
+            Log("first press of %s (virtual gamepad %s)", kLabels[n], joystick_ ? "attached" : "MISSING");
+        }
+    if (stickActive && !stickActive_) {
+        static bool logged = false;
+        if (!logged) Log("first use of the stick");
+        logged = true;
+    }
     if (pressed != pressed_ || stickActive != stickActive_ || knobX != knobX_ || knobY != knobY_
         || stickX != stickX_ || stickY != stickY_)
         ++revision_;
