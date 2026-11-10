@@ -111,6 +111,8 @@ struct Settings
     // they are (bootstrap/touch_layout.h), set in the launcher's layout
     // editor; empty for the default layout.
     std::string touch_layout;
+    // controls.touch_opacity: the on-screen controls' visibility, 20-100 %.
+    int touch_opacity = 100;
 #else
     std::array<std::string, 4> players{"keyboard", "off", "off", "off"};
 #endif

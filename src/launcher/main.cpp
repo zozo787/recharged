@@ -738,6 +738,8 @@ private:
     // The window's and the screen's sizes and orientation, in the session log.
     void LogScreen(const char* why) const
     {
+        SDL_Rect safe{};
+        SDL_GetWindowSafeArea(window_, &safe);
         int w = 0, h = 0, pw = 0, ph = 0;
         SDL_GetWindowSize(window_, &w, &h);
         SDL_GetWindowSizeInPixels(window_, &pw, &ph);
@@ -747,14 +749,36 @@ private:
         const SDL_DisplayMode* mode = SDL_GetDesktopDisplayMode(display);
         char line[320];
         std::snprintf(line, sizeof line,
-                      "Screen (%s): window %dx%d, %dx%d pixels; display %dx%d, desktop mode %dx%d, orientation %d",
+                      "Screen (%s): window %dx%d, %dx%d pixels; display %dx%d, desktop mode %dx%d, orientation %d; "
+                      "safe area %d,%d %dx%d",
                       why, w, h, pw, ph, bounds.w, bounds.h, mode ? mode->w : 0, mode ? mode->h : 0,
-                      int(SDL_GetCurrentDisplayOrientation(display)));
+                      int(SDL_GetCurrentDisplayOrientation(display)), safe.x, safe.y, safe.w, safe.h);
         platform::SessionLogLine(line);
     }
 #endif
 
     // ---------------------------------------------------------------- scale
+    // The screen's unsafe margins for this frame (`size`: the window in
+    // ImGui's units). On iOS the window covers the whole screen; elsewhere
+    // the margins stay 0.
+    void UpdateSafeInsets(ImVec2 size)
+    {
+        inset_left_ = inset_top_ = inset_right_ = inset_bottom_ = 0;
+#if defined(MSCHARGED_PLATFORM_IOS)
+        int w = 0, h = 0;
+        SDL_Rect safe{};
+        if (!SDL_GetWindowSize(window_, &w, &h) || w <= 0 || h <= 0 || !SDL_GetWindowSafeArea(window_, &safe)) return;
+        // SDL gives window coordinates; ImGui may use other units.
+        const float sx = size.x / float(w), sy = size.y / float(h);
+        inset_left_ = std::max(0.0f, float(safe.x) * sx);
+        inset_top_ = std::max(0.0f, float(safe.y) * sy);
+        inset_right_ = std::max(0.0f, float(w - safe.x - safe.w) * sx);
+        inset_bottom_ = std::max(0.0f, float(h - safe.y - safe.h) * sy);
+#else
+        (void)size;
+#endif
+    }
+
     UiMetrics CurrentMetrics() const
     {
         const DisplayScale scale{SDL_GetWindowDisplayScale(window_), SDL_GetWindowPixelDensity(window_)};
@@ -2889,9 +2913,10 @@ private:
             | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoBackground
             | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         ImGui::PopStyleVar();
-        const float sidebar = size.x < Dp(1000) ? Dp(216) : Dp(244);
-        DrawSidebar(sidebar, size.y);
-        DrawMain({sidebar, 0}, {size.x - sidebar, size.y}, quit);
+        UpdateSafeInsets(size);
+        const float sidebar = size.x - inset_left_ - inset_right_ < Dp(1000) ? Dp(216) : Dp(244);
+        DrawSidebar(inset_left_ + sidebar, size.y);
+        DrawMain({inset_left_ + sidebar, 0}, {size.x - inset_left_ - sidebar, size.y}, quit);
         if (training_requested_)
         {
             training_requested_ = false;
@@ -2916,15 +2941,18 @@ private:
 #endif
     }
 
+    // `width` includes the screen's unsafe left margin (inset_left_), which
+    // the sidebar's colour fills; its contents start after it.
     void DrawSidebar(float width, float height)
     {
         const auto& fonts = CurrentFonts();
         auto* draw = ImGui::GetWindowDrawList();
         draw->AddRectFilled({0, 0}, {width, height}, Col(color::sidebar));
         draw->AddLine({width - 1, 0}, {width - 1, height}, Col(color::border, 0.7f), 1.0f);
-        const float pad = Dp(24);
+        const float left = inset_left_, inner = width - left;
+        const float pad = left + Dp(24);
         // The name in plain text: the logo itself is on the Play and About pages.
-        float y = Dp(30);
+        float y = inset_top_ + Dp(30);
 #if defined(MSCHARGED_PLATFORM_IOS)
         DrawTracked(draw, fonts.caption, {pad, y}, Col(color::muted), "NATIVE PORT", Dp(2.4f));
 #else
@@ -2941,26 +2969,26 @@ private:
         // of them is open.
         const auto setup = [](int page) { return page == PageMiis || page == PageSidekicks || page == PageRules; };
         if (setup(page_)) setup_page_ = page_;
-        ImGui::SetCursorPos({Dp(12), y});
+        ImGui::SetCursorPos({left + Dp(12), y});
         for (int i = 0; i < PageCount; ++i)
         {
-            ImGui::SetCursorPosX(Dp(12));
+            ImGui::SetCursorPosX(left + Dp(12));
             if (setup(i))
             {
                 if (i != PageMiis) continue;
                 const auto row = [&](int page) { return NavPage{page_names[page], page_icons[page], page_ == page}; };
                 const int clicked = NavGroup("Online/Match setup", Icon::Clipboard, setup(page_),
-                                             {row(PageMiis), row(PageSidekicks), row(PageRules)}, width - Dp(24));
+                                             {row(PageMiis), row(PageSidekicks), row(PageRules)}, inner - Dp(24));
                 if (clicked == 0) page_ = setup_page_;
                 if (clicked > 0) page_ = PageMiis + clicked - 1;
             }
-            else if (NavItem(page_names[i], page_icons[i], page_ == i, width - Dp(24))) page_ = i;
+            else if (NavItem(page_names[i], page_icons[i], page_ == i, inner - Dp(24))) page_ = i;
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetStyle().ItemSpacing.y + Dp(4));
         }
 
         // Version at the bottom of the sidebar; test builds show a badge above
         // it that opens their pull request.
-        const float badge = height - Dp(40), nav_end = ImGui::GetCursorPosY();
+        const float badge = height - inset_bottom_ - Dp(40), nav_end = ImGui::GetCursorPosY();
         if (nav_end < badge - Dp(36) && std::string_view(build::channel) == "test")
         {
             ImGui::SetCursorPos({pad - Dp(2), badge - Dp(36)});
@@ -3010,10 +3038,14 @@ private:
         // Which Wii Remotes answer: for the Players card, and for the Play
         // page when a player uses a remote.
         if (page_ == PageControls || (page_ == PagePlay && RemotePlayer())) PollWiimotes();
+        // The page and the bar keep out of the screen's unsafe margins
+        // (inset_*_, iOS); the bar's colour and the Play page's artwork
+        // still reach the screen's edges.
         const float bar = Dp(74);
-        const ImVec2 content{size.x, size.y - bar};
-        ImGui::SetCursorPos(origin);
-        if (page_ == PagePlay) DrawPlayPage(origin, content, quit);
+        const ImVec2 content{size.x - inset_right_, size.y - bar - inset_top_ - inset_bottom_};
+        const ImVec2 page_origin{origin.x, origin.y + inset_top_};
+        ImGui::SetCursorPos(page_origin);
+        if (page_ == PagePlay) DrawPlayPage(page_origin, content, quit);
         else
         {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Dp(36, 30));
@@ -3043,7 +3075,15 @@ private:
             ImGui::EndChild();
             ImGui::PopStyleVar();
         }
-        DrawBottomBar({origin.x, origin.y + content.y}, {size.x, bar}, quit);
+        const float bar_y = page_origin.y + content.y;
+        if (inset_right_ > 0 || inset_bottom_ > 0)
+        {
+            auto* draw = ImGui::GetWindowDrawList();
+            draw->AddRectFilled({origin.x, bar_y}, {origin.x + size.x, origin.y + size.y},
+                                Col(Mix(color::window, color::sidebar, 0.7f)));
+            draw->AddLine({origin.x, bar_y}, {origin.x + size.x, bar_y}, Col(color::border, 0.8f), 1.0f);
+        }
+        DrawBottomBar({origin.x, bar_y}, {content.x, bar}, quit);
     }
 
     void DrawPlayPage(ImVec2 origin, ImVec2 size, bool& quit)
@@ -3059,9 +3099,10 @@ private:
         const float button_y = origin.y + hero - Dp(30), below = button_y + button;
         const float cards_y = std::clamp(origin.y + size.y - margin - card, below + gap, below + Dp(64));
         const float art = cards_y - origin.y;
-        hero_ = {origin.x, origin.y, size.x, art};
+        // Under the screen's unsafe right margin too, up to its edge.
+        hero_ = {origin.x, origin.y, size.x + inset_right_, art};
         hero_visible_ = true;
-        const ImVec2 art_max{origin.x + size.x, origin.y + art};
+        const ImVec2 art_max{origin.x + size.x + inset_right_, origin.y + art};
         // Shades of the page colour over the artwork, eased in eight bands so that no
         // edge shows: the logo's side dark, the lower part dissolving into the page
         // before the cards, a little shade under the update controls.
@@ -6393,12 +6434,14 @@ private:
     // ------------------------------------------- on-screen controls layout
     // Over the whole launcher, the on-screen controls where the game draws
     // them (bootstrap/touch_layout.h; the screen is the game's). A finger
-    // drags a control to move it and selects it for the size buttons; Reset
-    // puts the default layout back; Save writes controls.touch_layout.
+    // drags a control to move it and selects it for the size buttons; the
+    // slider sets their opacity; Reset puts the default layout and opacity
+    // back; Save writes controls.touch_layout and controls.touch_opacity.
     void OpenTouchLayout()
     {
         touch_layout_open_ = true;
         touch_edit_ = ParseTouchLayout(draft_.touch_layout);
+        touch_opacity_edit_ = draft_.touch_opacity;
         touch_selected_ = touch_drag_ = -1;
     }
 
@@ -6408,9 +6451,10 @@ private:
         touch_selected_ = touch_drag_ = -1;
         if (!save) return;
         const auto layout = FormatTouchLayout(touch_edit_);
-        if (layout != draft_.touch_layout)
+        if (layout != draft_.touch_layout || touch_opacity_edit_ != draft_.touch_opacity)
         {
             draft_.touch_layout = layout;
+            draft_.touch_opacity = touch_opacity_edit_;
             dirty_ = true;
         }
         if (dirty_ && config_ok_) Save();
@@ -6438,7 +6482,7 @@ private:
         auto* draw = ImGui::GetWindowDrawList();
 
         // The panel in the middle, where the game's picture is, not its controls.
-        const float panel_w = std::min(Dp(420), w - Dp(32)), panel_h = Dp(214);
+        const float panel_w = std::min(Dp(420), w - Dp(32)), panel_h = Dp(258);
         const ImVec2 panel_min{(w - panel_w) * 0.5f, (h - panel_h) * 0.5f};
         const ImVec2 panel_max{panel_min.x + panel_w, panel_min.y + panel_h};
         const ImVec2 mouse = io.MousePos;
@@ -6487,8 +6531,10 @@ private:
             const ImVec2 extent = fonts.button->CalcTextSizeA(font_size, FLT_MAX, 0, text);
             draw->AddText(fonts.button, font_size, {x - extent.x * 0.5f, y - extent.y * 0.5f}, colour, text);
         };
-        const ImU32 fill = IM_COL32(255, 255, 255, 40), line = IM_COL32(255, 255, 255, 140);
-        const ImU32 text = IM_COL32(255, 255, 255, 220);
+        // At the chosen opacity, as in the game (runtime/touch_controls.cpp).
+        const float opacity = float(touch_opacity_edit_) / 100.0f;
+        const auto white = [&](int alpha) { return IM_COL32(255, 255, 255, int(std::lround(float(alpha) * opacity))); };
+        const ImU32 fill = white(40), line = white(140), text = white(220);
         if (touch_selected_ == int(TouchStick))
         {
             const auto zone = TouchStickZone(circles[TouchStick], w, h);
@@ -6516,16 +6562,16 @@ private:
             }
             if (n == TouchStick)
             {
-                draw->AddCircleFilled({c.x, c.y}, c.r, IM_COL32(255, 255, 255, 20));
+                draw->AddCircleFilled({c.x, c.y}, c.r, white(20));
                 draw->AddCircle({c.x, c.y}, c.r, edge, 0, stroke);
-                draw->AddCircleFilled({c.x, c.y}, c.r * 0.45f, IM_COL32(255, 255, 255, 70));
+                draw->AddCircleFilled({c.x, c.y}, c.r * 0.45f, white(70));
                 continue;
             }
             if (n == TouchQuit)
             {
                 // Discreet in the game: a cross alone. A faint ring here to grab it.
                 draw->AddCircle({c.x, c.y}, c.r, selected ? edge : IM_COL32(255, 255, 255, 50), 0, stroke);
-                label(kTouchItems[n].label, c.r * 1.4f, c.x, c.y, IM_COL32(255, 255, 255, 160));
+                label(kTouchItems[n].label, c.r * 1.4f, c.x, c.y, white(160));
                 continue;
             }
             draw->AddCircleFilled({c.x, c.y}, c.r, fill);
@@ -6572,13 +6618,22 @@ private:
             if (SecondaryButton("##bigger", "+", {button, Dp(34)}, scale < kMaxTouchScale))
                 scale = std::min(kMaxTouchScale, scale + kTouchScaleStep);
         }
+        // Opacity of all the controls.
+        const float opacity_y = size_y + Dp(48);
+        ImGui::SetCursorScreenPos({panel_min.x + pad, opacity_y + Dp(8)});
+        TextColored(fonts.body, color::text, "Opacity");
+        const float slider_x = panel_min.x + pad + Dp(96);
+        ImGui::SetCursorScreenPos({slider_x, opacity_y + (Dp(34) - ImGui::GetFrameHeight()) * 0.5f});
+        PercentSlider("##touch_opacity", &touch_opacity_edit_, panel_max.x - pad - slider_x, nullptr, kMinTouchOpacity,
+                      kMaxTouchOpacity);
         const float buttons_y = panel_max.y - pad - Dp(40);
         const float gap = Dp(10), each = (panel_w - 2 * pad - 2 * gap) / 3;
         ImGui::SetCursorScreenPos({panel_min.x + pad, buttons_y});
-        if (SecondaryButton("##touch_reset", "Reset", {each, Dp(40)}, touch_edit_ != DefaultTouchPlacements(),
-                            Icon::Refresh))
+        const bool changed = touch_edit_ != DefaultTouchPlacements() || touch_opacity_edit_ != kMaxTouchOpacity;
+        if (SecondaryButton("##touch_reset", "Reset", {each, Dp(40)}, changed, Icon::Refresh))
         {
             touch_edit_ = DefaultTouchPlacements();
+            touch_opacity_edit_ = kMaxTouchOpacity;
             touch_selected_ = touch_drag_ = -1;
         }
         ImGui::SetCursorScreenPos({panel_min.x + pad + each + gap, buttons_y});
@@ -9184,9 +9239,14 @@ private:
     // and where on that control the finger holds it.
     bool touch_layout_open_ = false;
     TouchPlacements touch_edit_{};
+    int touch_opacity_edit_ = 100;
     int touch_selected_ = -1, touch_drag_ = -1;
     ImVec2 touch_grab_{};
 #endif
+    // The screen's unsafe margins (notch, Dynamic Island, rounded corners,
+    // home indicator) in window units, which the launcher's contents keep out
+    // of; 0 outside iOS.
+    float inset_left_ = 0, inset_top_ = 0, inset_right_ = 0, inset_bottom_ = 0;
     // Controls: keyboard & mouse keys view, and the keycap waiting for a key.
     bool keyboard_view_ = false;
     int capture_action_ = -1, capture_slot_ = -1;

@@ -83,7 +83,9 @@ void Log(const char* format, ...)
 }
 } // namespace
 
-TouchControls::TouchControls(const std::string& layout) : placements_(ParseTouchLayout(layout))
+TouchControls::TouchControls(const std::string& layout, int opacity)
+    : placements_(ParseTouchLayout(layout)),
+      opacity_(float(std::clamp(opacity, kMinTouchOpacity, kMaxTouchOpacity)) / 100.0f)
 {
     if (const char* hint = SDL_GetHint(SDL_HINT_TOUCH_MOUSE_EVENTS)) {
         hadHint_ = true;
@@ -95,7 +97,7 @@ TouchControls::TouchControls(const std::string& layout) : placements_(ParseTouch
     gamepads_ = SDL_InitSubSystem(SDL_INIT_GAMEPAD);
     watching_ = SDL_AddEventWatch(Watch, this);
     Log(watching_ ? "on" : "no event watch: %s", SDL_GetError());
-    Log("%s layout", layout.empty() ? "default" : "custom");
+    Log("%s layout, %d %% opacity", layout.empty() ? "default" : "custom", int(std::lround(opacity_ * 100)));
     // Now, before the input owner sets up the players: the touch player's
     // channel goes to this virtual gamepad's id (platform/hardware_owner.cpp).
     Attach();
@@ -441,8 +443,10 @@ void TouchControls::Service(float width, float height)
 void TouchControls::Draw(ImDrawList* draw, ImFont* font) const
 {
     if (!visible_ || width_ <= 0) return;
-    const ImU32 fill = IM_COL32(255, 255, 255, 40), fillPressed = IM_COL32(255, 255, 255, 120);
-    const ImU32 line = IM_COL32(255, 255, 255, 140), text = IM_COL32(255, 255, 255, 220);
+    // controls.touch_opacity scales every part (the Quitter window stays as it is).
+    const auto white = [&](int alpha) { return IM_COL32(255, 255, 255, int(std::lround(float(alpha) * opacity_))); };
+    const ImU32 fill = white(40), fillPressed = white(120);
+    const ImU32 line = white(140), text = white(220);
     const float thickness = std::max(1.5f, std::min(width_, height_) * 0.004f);
     const auto centred = [&](const char* label, float size, float x, float y, ImU32 colour) {
         const ImVec2 extent = font->CalcTextSizeA(size, FLT_MAX, 0, label);
@@ -452,7 +456,7 @@ void TouchControls::Draw(ImDrawList* draw, ImFont* font) const
         const auto& b = buttons_[n];
         if (n == Quit) {
             // Discreet: a faint cross, no disc.
-            centred(Label(n), b.r * 1.4f, b.x, b.y, IM_COL32(255, 255, 255, 110));
+            centred(Label(n), b.r * 1.4f, b.x, b.y, white(110));
             continue;
         }
         draw->AddCircleFilled({b.x, b.y}, b.r, pressed_[n] ? fillPressed : fill);
@@ -460,10 +464,11 @@ void TouchControls::Draw(ImDrawList* draw, ImFont* font) const
         const float size = n == Hit ? b.r * 0.55f : n == Item ? b.r * 0.48f : b.r * 0.9f;
         centred(Label(n), size, b.x, b.y, text);
     }
-    draw->AddCircleFilled({stickX_, stickY_}, stickRadius_, IM_COL32(255, 255, 255, stickActive_ ? 35 : 20));
+    draw->AddCircleFilled({stickX_, stickY_}, stickRadius_, white(stickActive_ ? 35 : 20));
     draw->AddCircle({stickX_, stickY_}, stickRadius_, line, 0, thickness);
-    draw->AddCircleFilled({knobX_, knobY_}, stickRadius_ * 0.45f, stickActive_ ? fillPressed : IM_COL32(255, 255, 255, 70));
+    draw->AddCircleFilled({knobX_, knobY_}, stickRadius_ * 0.45f, stickActive_ ? fillPressed : white(70));
     if (!confirming_) return;
+    const ImU32 text_full = IM_COL32(255, 255, 255, 220);
     // "Quitter la partie ?" over a dimmed screen.
     const float s = std::min(width_, height_);
     draw->AddRectFilled({0, 0}, {width_, height_}, IM_COL32(0, 0, 0, 140));
@@ -471,7 +476,7 @@ void TouchControls::Draw(ImDrawList* draw, ImFont* font) const
     draw->AddRect({dialog_.x0, dialog_.y0}, {dialog_.x1, dialog_.y1}, IM_COL32(255, 255, 255, 60), 0.03f * s, 0,
                   thickness);
     // iOS cannot reopen the launcher: leaving the game closes the app.
-    centred("Quitter le jeu ?", 0.055f * s, (dialog_.x0 + dialog_.x1) * 0.5f, dialog_.y0 + 0.08f * s, text);
+    centred("Quitter le jeu ?", 0.055f * s, (dialog_.x0 + dialog_.x1) * 0.5f, dialog_.y0 + 0.08f * s, text_full);
     centred("L'application va se fermer.", 0.036f * s, (dialog_.x0 + dialog_.x1) * 0.5f, dialog_.y0 + 0.145f * s,
             IM_COL32(211, 215, 221, 200));
     const auto button = [&](const Rect& r, const char* label, ImU32 colour) {

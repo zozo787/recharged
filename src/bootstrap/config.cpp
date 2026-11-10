@@ -110,6 +110,7 @@ Values Encode(const Settings& s)
             {"mods.dump_textures", s.dump_textures ? "true" : "false"}};
 #if defined(MSCHARGED_PLATFORM_IOS)
     values.emplace("controls.touch_layout", s.touch_layout);
+    values.emplace("controls.touch_opacity", std::to_string(s.touch_opacity));
 #endif
     for (std::size_t n = 0; n < KeyActionCount; ++n)
         values.emplace(std::string("keyboard.") + kKeyActions[n].key, s.keys[n]);
@@ -258,6 +259,7 @@ Settings Decode(const Values& values)
     // Read as far as it can be (bootstrap/touch_layout.h): never an error.
     if (const auto it = values.find("controls.touch_layout"); it != values.end())
         s.touch_layout = FormatTouchLayout(ParseTouchLayout(it->second));
+    number("controls.touch_opacity", s.touch_opacity, kMinTouchOpacity, kMaxTouchOpacity);
 #endif
     // [keyboard] and [gamepadN]: one or two names per action, separated by " | ".
     const auto names = [&](const std::string& key, std::string& value, const char* what) {

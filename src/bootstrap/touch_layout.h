@@ -65,6 +65,9 @@ struct TouchPlacement
 using TouchPlacements = std::array<TouchPlacement, TouchItemCount>;
 
 inline constexpr int kMinTouchScale = 50, kMaxTouchScale = 200, kTouchScaleStep = 10;
+// controls.touch_opacity: how visible the controls are, in percent of their
+// default look (100); never fully transparent, so they can still be found.
+inline constexpr int kMinTouchOpacity = 20, kMaxTouchOpacity = 100;
 
 struct TouchCircle
 {
