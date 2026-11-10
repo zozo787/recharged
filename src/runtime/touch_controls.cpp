@@ -23,7 +23,7 @@ namespace mscharged::runtime {
 namespace {
 // Labels in the overlay font's ASCII. French: the player's language.
 constexpr const char* kLabels[TouchControls::ControlCount] = {
-    "A", "B", "C", "Z", "Tacle", "Objet", "+", "-", "1", "2", "\xC3\x97", "^", "v", "<", ">"};
+    "A", "B", "C", "Z", "Tacle", "Changer", "+", "-", "1", "2", "\xC3\x97", "^", "v", "<", ">"};
 // Each control's gamepad input (the default layout, bootstrap/gamepad_actions.h).
 struct Input {
     int button = -1; // SDL_GamepadButton, or -1
@@ -35,7 +35,7 @@ constexpr Input kInputs[TouchControls::ControlCount] = {
     {SDL_GAMEPAD_BUTTON_LEFT_SHOULDER, -1},  // C
     {-1, SDL_GAMEPAD_AXIS_LEFT_TRIGGER},     // Z
     {-1, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER},    // shake the Remote: hit an opponent
-    {SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, -1}, // shake the Nunchuk: switch items
+    {SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, -1}, // shake the Nunchuk: swap items (C uses one)
     {SDL_GAMEPAD_BUTTON_START, -1},          // +
     {SDL_GAMEPAD_BUTTON_BACK, -1},           // -
     {SDL_GAMEPAD_BUTTON_WEST, -1},           // 1
@@ -468,7 +468,7 @@ void TouchControls::Draw(ImDrawList* draw, ImFont* font) const
         }
         draw->AddCircleFilled({b.x, b.y}, b.r, pressed_[n] ? fillPressed : fill);
         draw->AddCircle({b.x, b.y}, b.r, line, 0, thickness);
-        const float size = n == Hit || n == Item ? b.r * 0.55f : b.r * 0.9f;
+        const float size = n == Hit ? b.r * 0.55f : n == Item ? b.r * 0.48f : b.r * 0.9f;
         centred(kLabels[n], size, b.x, b.y, text);
     }
     draw->AddCircleFilled({stickX_, stickY_}, stickRadius_, IM_COL32(255, 255, 255, stickActive_ ? 35 : 20));
