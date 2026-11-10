@@ -2919,7 +2919,11 @@ private:
         const float pad = Dp(24);
         // The name in plain text: the logo itself is on the Play and About pages.
         float y = Dp(30);
+#if defined(MSCHARGED_PLATFORM_IOS)
+        DrawTracked(draw, fonts.caption, {pad, y}, Col(color::muted), "NATIVE PORT", Dp(2.4f));
+#else
         DrawTracked(draw, fonts.caption, {pad, y}, Col(color::muted), "NATIVE PC PORT", Dp(2.4f));
+#endif
         y += FontSize(fonts.caption) + Dp(2);
         DrawLabel(draw, fonts.title, {pad, y}, IM_COL32_WHITE, "RECHARGED");
         y += FontSize(fonts.title) + Dp(4);
@@ -3084,7 +3088,11 @@ private:
         // lines in a narrow window. Both a little below the middle between the
         // update controls and the button, beside Mario's head and shoulders.
         const char* game = "Mario Strikers Charged";
+#if defined(MSCHARGED_PLATFORM_IOS)
+        const char* rest = ", rebuilt to run natively on iPhone and iPad.";
+#else
         const char* rest = ", rebuilt to run natively on your PC.";
+#endif
         const float game_width = TextSize(fonts.heading, game).x;
         const bool one_line = game_width + TextSize(fonts.heading, rest).x <= size.x * 0.75f - pad;
         // The logo set by its width, its height following from its proportions.
@@ -3679,7 +3687,9 @@ private:
         }
         EndCard();
 
+#if !defined(MSCHARGED_PLATFORM_IOS) // no Discord app to talk to on iOS
         DiscordCard();
+#endif
         SaveDataCard();
     }
 
@@ -5206,6 +5216,7 @@ private:
         const auto hotkeys = DraftHotkeys();
         const auto key = [&](HotkeyIndex hotkey) { return platform::HotkeyLabel(hotkeys[hotkey]); };
 
+#if !defined(MSCHARGED_PLATFORM_IOS) // iOS: the game always covers the whole screen
         BeginCard("##window", "Screen", nullptr, Icon::Display);
         if (BeginRows("##window_rows"))
         {
@@ -5241,6 +5252,7 @@ private:
             EndRows();
         }
         EndCard();
+#endif
 
         BeginCard("##picture", "Picture", nullptr, Icon::Sliders);
         if (BeginRows("##picture_rows"))
@@ -7509,9 +7521,15 @@ private:
 
     void ControlsMain()
     {
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS: apps cannot reach Wii Remotes (Bluetooth Classic HID).
+        PageHeader("Controls", "Play with the touch screen, or an Xbox, PlayStation or other Bluetooth gamepad.");
+        PlayersCard();
+#else
         PageHeader("Controls", "Play with keyboard and mouse, an Xbox, PlayStation or other gamepad, or a Wii Remote with Nunchuk. Keep the game window focused.");
         PlayersCard();
         WiiRemoteCard();
+#endif
         RumbleCard();
         HotkeysCard();
 
@@ -8293,6 +8311,7 @@ private:
         }
         EndCard();
 
+#if !defined(MSCHARGED_PLATFORM_IOS) // an iOS app does not update itself
         BeginCard("##updates", "Updates", nullptr, Icon::Download);
         if (BeginRows("##update_rows"))
         {
@@ -8307,6 +8326,7 @@ private:
             EndRows();
         }
         EndCard();
+#endif
 
         BeginCard("##graphics", "Graphics", nullptr, Icon::Display);
         if (BeginRows("##graphics_rows"))
@@ -8381,7 +8401,7 @@ private:
 
             Row("Verbose console", "Also prints development traces and the game's own debug output. Useful for bug reports.");
             if (Toggle("##verbose_console", &draft_.verbose_console)) dirty_ = true;
-#if defined(_WIN32) || defined(__APPLE__)
+#if defined(_WIN32) || (defined(__APPLE__) && !defined(MSCHARGED_PLATFORM_IOS))
             Row("Log window", "Shows the log in a separate window while Recharged runs, for testing. Closing it doesn't stop the game.");
             if (Toggle("##log_window", &draft_.log_window)) dirty_ = true;
 #endif
@@ -8486,7 +8506,11 @@ private:
         const char* game = "Mario Strikers Charged";
         DrawLabel(draw, fonts.heading, {x, y}, Col(color::text), game);
         DrawLabel(draw, fonts.heading, {x + TextSize(fonts.heading, game).x, y}, Col(color::text, 0.72f),
+#if defined(MSCHARGED_PLATFORM_IOS)
+                  ", natively on iPhone and iPad");
+#else
                   ", natively on your PC");
+#endif
 
         ImGui::SetCursorScreenPos(pos);
         ImGui::Dummy({width, height});
