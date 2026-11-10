@@ -32,12 +32,21 @@ bool TouchMouse(const SDL_Event& event)
 }
 
 // The window under the mouse that can scroll vertically: the hovered one or
-// one of its parents.
+// one of its parents, as the mouse wheel finds it. A window that refuses the
+// wheel refuses the finger too: the launcher's root window holds the sidebar
+// and the pages, and scrolling it moved everything.
 ImGuiWindow* ScrollableUnderMouse()
 {
     ImGuiContext& g = *ImGui::GetCurrentContext();
     for (ImGuiWindow* window = g.HoveredWindow; window; window = window->ParentWindow)
+    {
+        if (window->Flags & ImGuiWindowFlags_NoScrollWithMouse)
+        {
+            if (!(window->Flags & ImGuiWindowFlags_ChildWindow)) return nullptr;
+            continue; // a child that refuses the wheel passes it to its parent
+        }
         if (window->ScrollMax.y > 0.0f) return window;
+    }
     return nullptr;
 }
 } // namespace

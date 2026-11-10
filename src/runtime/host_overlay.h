@@ -15,6 +15,8 @@ struct ImFont;
 
 namespace mscharged::runtime {
 
+class TouchControls;
+
 // What the host draws over the presented picture, in windowed and fullscreen
 // mode: the performance overlay (display.fps_overlay: FPS | GPU % | CPU %, then
 // in network sessions LAT (round trip, ms) and in network matches with rollback
@@ -45,6 +47,8 @@ public:
         std::optional<double> rollback_frames;
     };
     void SetNetwork(const Network& network);
+    // The on-screen touch controls to draw (iOS), or none.
+    void SetTouchControls(const TouchControls* controls) { touch_ = controls; }
     // Shows `text` for a moment, replacing the message shown before.
     void ShowMessage(std::string text, Clock::time_point now);
     // Rebuild only when a displayed value, the message's fade or the window's
@@ -70,6 +74,8 @@ private:
     std::uint32_t shownWidth_ = 0;
     std::uint32_t shownHeight_ = 0;
     float builtSize_ = 0.0f;
+    const TouchControls* touch_ = nullptr;
+    std::uint64_t shownTouch_ = 0;
     ImFont* number_ = nullptr;
     ImFont* label_ = nullptr;
     ImFont* messageFont_ = nullptr;

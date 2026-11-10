@@ -87,6 +87,7 @@
 #include <SDL3/SDL_hints.h>
 #include <SDL3/SDL_filesystem.h>
 #include "platform/native_module_loader.h"
+#include "runtime/touch_controls.h"
 #if defined(MSCHARGED_AUTOPILOT)
 #include "platform/bank_cue.h"
 #endif
@@ -1286,6 +1287,15 @@ int mscharged::RunOriginalGame(int argc, char** argv,
                 launch.settings.fps_overlay ? std::optional(mscharged::runtime::ParseOverlayCorner(
                     launch.settings.fps_overlay_corner).value_or(mscharged::runtime::OverlayCorner::TopRight))
                                             : std::nullopt);
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS: a stick and buttons on the screen, hidden while a controller
+        // is connected (runtime/touch_controls.h).
+        std::optional<mscharged::runtime::TouchControls> touchControls;
+        if(hostOverlay) {
+            touchControls.emplace();
+            hostOverlay->SetTouchControls(&*touchControls);
+        }
+#endif
         // display.remember_window: not in Steam's Game Mode, for a window size
         // from the command line or without a settings file.
         std::optional<mscharged::runtime::WindowMemory> windowMemory;
@@ -1443,6 +1453,9 @@ int mscharged::RunOriginalGame(int argc, char** argv,
             if(hostOverlay) {
                 if(const auto rate=frameRate.Sample(frames,now)) hostOverlay->SetRate(*rate);
                 const auto size=aurora_get_window_size();
+#if defined(MSCHARGED_PLATFORM_IOS)
+                if(touchControls) touchControls->Service(float(size.native_fb_width),float(size.native_fb_height));
+#endif
                 hostOverlay->Update(size.native_fb_width,size.native_fb_height,now);
             }
             if(windowMemory) windowMemory->Service(now);
