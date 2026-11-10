@@ -518,7 +518,10 @@ void TouchControls::Draw(ImDrawList* draw, ImFont* font) const
     draw->AddRectFilled({dialog_.x0, dialog_.y0}, {dialog_.x1, dialog_.y1}, IM_COL32(22, 26, 34, 245), 0.03f * s);
     draw->AddRect({dialog_.x0, dialog_.y0}, {dialog_.x1, dialog_.y1}, IM_COL32(255, 255, 255, 60), 0.03f * s, 0,
                   thickness);
-    centred("Quitter la partie ?", 0.055f * s, (dialog_.x0 + dialog_.x1) * 0.5f, dialog_.y0 + 0.10f * s, text);
+    // iOS cannot reopen the launcher: leaving the game closes the app.
+    centred("Quitter le jeu ?", 0.055f * s, (dialog_.x0 + dialog_.x1) * 0.5f, dialog_.y0 + 0.08f * s, text);
+    centred("L'application va se fermer.", 0.036f * s, (dialog_.x0 + dialog_.x1) * 0.5f, dialog_.y0 + 0.145f * s,
+            IM_COL32(211, 215, 221, 200));
     const auto button = [&](const Rect& r, const char* label, ImU32 colour) {
         draw->AddRectFilled({r.x0, r.y0}, {r.x1, r.y1}, colour, 0.02f * s);
         centred(label, 0.045f * s, (r.x0 + r.x1) * 0.5f, (r.y0 + r.y1) * 0.5f, IM_COL32(255, 255, 255, 240));

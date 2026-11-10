@@ -8285,8 +8285,10 @@ private:
                     if (ImGui::Selectable(names[i], draft_.ui_scale == values[i])) { draft_.ui_scale = values[i]; dirty_ = true; }
                 ImGui::EndCombo();
             }
+#if !defined(MSCHARGED_PLATFORM_IOS) // iOS: an app cannot start itself again
             Row("Reopen after the game", "Opens the launcher again when you close the game.");
             if (Toggle("##reopen_after_game", &draft_.reopen_after_game)) dirty_ = true;
+#endif
             EndRows();
         }
         EndCard();
@@ -9430,7 +9432,9 @@ int main(int argc, char** argv)
             result = launcher.Run(std::move(options));
             frontend_launch = launcher.FrontendLaunch();
             if (launcher.RestartRequested()) restart = launcher.RestartExecutable();
+#if !defined(MSCHARGED_PLATFORM_IOS) // iOS refuses it: leaving the game closes the app
             else if (frontend_launch && frontend_launch->settings.reopen_after_game) reopen = launcher.RestartExecutable();
+#endif
         } // Destroy the launcher/ImGui/SDL session before Aurora initializes.
         if (!restart.empty())
         {

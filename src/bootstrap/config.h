@@ -220,12 +220,9 @@ struct Settings
     bool check_updates = true;
     // launcher.reopen_after_game: open the launcher again when a game started
     // from it closes normally.
-#if defined(MSCHARGED_PLATFORM_IOS)
-    // iOS: leaving the game (HOME Menu, Wii Menu) should not leave the app.
-    bool reopen_after_game = true;
-#else
+    // Not on iOS: an app cannot start itself again there (the launcher hides
+    // it and never arms the reopen; leaving the game closes the app).
     bool reopen_after_game = false;
-#endif
     // launcher.show_welcome: the welcome guide (assets/launcher/welcome.md)
     // opens at the next start; closing it switches this off.
     bool show_welcome = true;

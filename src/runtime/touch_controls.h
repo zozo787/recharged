@@ -25,9 +25,9 @@ namespace mscharged::runtime {
 // opponent), "Objet" shakes the Nunchuk (switch items), +, - and HOME are the
 // Remote's (HOME opens the Wii's HOME Menu, whose Wii Menu leaves the game),
 // 1 and 2 too, and the small pad is the D-pad. A small cross at the top left
-// opens "Quitter la partie ?": Quitter asks the game window to close, as
-// closing it does on a computer (the game powers off like a Wii, then the
-// launcher reopens, reopen_after_game); Annuler goes back to the game. Created only when a player chose the touch screen
+// opens "Quitter le jeu ?": Quitter asks the game window to close, as closing
+// it does on a computer (the game powers off like a Wii; iOS cannot start the
+// app again, so the app closes); Annuler goes back to the game. Created only when a player chose the touch screen
 // (controls.playerN = touch), before the input owner sets up the players.
 // While a physical controller is connected it plays instead and the controls
 // hide (the virtual gamepad stays attached, released). A finger that lands
