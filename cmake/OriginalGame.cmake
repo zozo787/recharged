@@ -336,7 +336,6 @@ target_link_libraries(mscharged_original_game_vi PRIVATE aurora::vi)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/SystemUsage.cmake")
 add_library(charged_original_game_host OBJECT
     src/runtime/original_game.cpp src/runtime/frame_timing_log.cpp src/runtime/host_overlay.cpp
-    src/runtime/touch_controls.cpp
     src/runtime/game_window.cpp
     src/runtime/texture_pack_loading.cpp src/platform/hd_recolour.cpp
     src/runtime/host_frame_pacing.cpp
@@ -344,6 +343,10 @@ add_library(charged_original_game_host OBJECT
     src/platform/console.cpp
     src/platform/os.cpp src/platform/host_metadata.cpp src/platform/string_format.cpp
     src/platform/report.cpp src/platform/thread.cpp src/platform/os_version.cpp)
+if(MSCHARGED_IOS)
+    # The on-screen touch controls and their layout (iOS only).
+    target_sources(charged_original_game_host PRIVATE src/runtime/touch_controls.cpp)
+endif()
 target_compile_features(charged_original_game_host PRIVATE cxx_std_20)
 target_include_directories(charged_original_game_host BEFORE PRIVATE "${MSCHARGED_AURORA_PREPARED}/include")
 target_include_directories(charged_original_game_host PUBLIC src)

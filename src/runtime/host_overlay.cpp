@@ -1,7 +1,9 @@
 #include "runtime/host_overlay.h"
 
 #include "platform/path.h"
+#if defined(MSCHARGED_PLATFORM_IOS)
 #include "runtime/touch_controls.h"
+#endif
 
 #include <aurora/imgui.h>
 #include <imgui.h>
@@ -109,8 +111,12 @@ void HostOverlay::Update(std::uint32_t surface_width, std::uint32_t surface_heig
         }
         if (opacity == 0) message_.clear();
     }
-    const bool touch = touch_ && touch_->Visible();
-    const std::uint64_t touchRevision = touch ? touch_->Revision() : 0;
+    bool touch = false; // the on-screen controls (iOS)
+    std::uint64_t touchRevision = 0;
+#if defined(MSCHARGED_PLATFORM_IOS)
+    touch = touch_ && touch_->Visible();
+    touchRevision = touch ? touch_->Revision() : 0;
+#endif
     const bool showing = performance_ || opacity > 0 || touch;
     if (!showing) {
         if (drawn_) aurora_imgui_clear_overlay();
@@ -125,7 +131,9 @@ void HostOverlay::Update(std::uint32_t surface_width, std::uint32_t surface_heig
     aurora_imgui_begin_overlay(surface_width, surface_height);
     ImDrawList* draw = ImGui::GetForegroundDrawList();
     // Under the numbers and messages.
+#if defined(MSCHARGED_PLATFORM_IOS)
     if (touch) touch_->Draw(draw, number_);
+#endif
     const float shadow = std::max(1.0f, std::round(size / 15.0f));
     std::optional<FpsOverlayLayout> performanceLayout;
     if (performance_) {

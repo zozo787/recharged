@@ -88,7 +88,9 @@
 #include <SDL3/SDL_hints.h>
 #include <SDL3/SDL_filesystem.h>
 #include "platform/native_module_loader.h"
+#if defined(MSCHARGED_PLATFORM_IOS)
 #include "runtime/touch_controls.h"
+#endif
 #if defined(MSCHARGED_AUTOPILOT)
 #include "platform/bank_cue.h"
 #endif

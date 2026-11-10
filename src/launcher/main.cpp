@@ -11,7 +11,9 @@
 #include "bootstrap/display_shape.h"
 #include "bootstrap/launch_options.h"
 #include "bootstrap/graphics_backend.h"
+#if defined(MSCHARGED_PLATFORM_IOS)
 #include "bootstrap/touch_layout.h"
+#endif
 #include "launcher/disc_search.h"
 #include "launcher/image_library.h"
 #include "launcher/issue_reporters.h"

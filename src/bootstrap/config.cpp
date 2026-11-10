@@ -1,9 +1,11 @@
 #include "config.h"
 #include "display_shape.h"
 #include "graphics_card.h"
-#include "touch_layout.h"
 #include "platform/path.h"
 #include "platform/wiimote_ids.h"
+#if defined(MSCHARGED_PLATFORM_IOS)
+#include "touch_layout.h"
+#endif
 
 #include <algorithm>
 #include <charconv>
