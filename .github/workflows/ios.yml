@@ -5,12 +5,14 @@ name: iOS build
 # is installed. No game data: the disc image is read on the device at run time.
 on:
   # Documentation alone does not rebuild the app.
+  # Not for documentation, nor for the macOS check's file (changed to start
+  # that check, .github/workflows/macos-check.yml).
   push:
     branches: [ios-port]
-    paths-ignore: ['docs/**', '**.md']
+    paths-ignore: ['docs/**', '**.md', '.github/workflows/macos-check.yml']
   pull_request:
     branches: [ios-port]
-    paths-ignore: ['docs/**', '**.md']
+    paths-ignore: ['docs/**', '**.md', '.github/workflows/macos-check.yml']
   workflow_dispatch:
     inputs:
       runner:
