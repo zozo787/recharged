@@ -23,7 +23,7 @@ namespace mscharged::runtime {
 namespace {
 // Labels in the overlay font's ASCII. French: the player's language.
 constexpr const char* kLabels[TouchControls::ControlCount] = {
-    "A", "B", "C", "Z", "Tacle", "Objet", "+", "HOME", "^", "v", "<", ">"};
+    "A", "B", "C", "Z", "Tacle", "Objet", "+", "HOME", "-", "1", "2", "^", "v", "<", ">"};
 // Each control's gamepad input (the default layout, bootstrap/gamepad_actions.h).
 struct Input {
     int button = -1; // SDL_GamepadButton, or -1
@@ -38,6 +38,9 @@ constexpr Input kInputs[TouchControls::ControlCount] = {
     {SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, -1}, // shake the Nunchuk: switch items
     {SDL_GAMEPAD_BUTTON_START, -1},          // +
     {SDL_GAMEPAD_BUTTON_GUIDE, -1},          // HOME
+    {SDL_GAMEPAD_BUTTON_BACK, -1},           // -
+    {SDL_GAMEPAD_BUTTON_WEST, -1},           // 1
+    {SDL_GAMEPAD_BUTTON_NORTH, -1},          // 2
     {SDL_GAMEPAD_BUTTON_DPAD_UP, -1},
     {SDL_GAMEPAD_BUTTON_DPAD_DOWN, -1},
     {SDL_GAMEPAD_BUTTON_DPAD_LEFT, -1},
@@ -208,6 +211,10 @@ void TouchControls::Layout(float width, float height)
     // Away from the top edge, where iOS delays touches for its own gestures.
     buttons_[Plus] = {width * 0.5f - 0.07f * s, 0.15f * s, 0.045f * s};
     buttons_[Home] = {width * 0.5f + 0.07f * s, 0.15f * s, 0.045f * s};
+    buttons_[Minus] = {width * 0.5f - 0.19f * s, 0.15f * s, 0.045f * s};
+    // 1 and 2 at the top right, as on a Remote held sideways.
+    buttons_[One] = {width - 0.21f * s, 0.15f * s, 0.045f * s};
+    buttons_[Two] = {width - 0.09f * s, 0.15f * s, 0.045f * s};
     const float padX = 0.16f * s, padY = 0.24f * s, step = 0.07f * s, padRadius = 0.037f * s;
     buttons_[Up] = {padX, padY - step, padRadius};
     buttons_[Down] = {padX, padY + step, padRadius};
