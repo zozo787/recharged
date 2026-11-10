@@ -11,6 +11,7 @@
 #include "bootstrap/display_shape.h"
 #include "bootstrap/launch_options.h"
 #include "bootstrap/graphics_backend.h"
+#include "bootstrap/touch_layout.h"
 #include "launcher/disc_search.h"
 #include "launcher/image_library.h"
 #include "launcher/issue_reporters.h"
@@ -2908,6 +2909,9 @@ private:
             quit = true;
         }
         ImGui::End();
+#if defined(MSCHARGED_PLATFORM_IOS)
+        TouchLayoutEditor();
+#endif
     }
 
     void DrawSidebar(float width, float height)
@@ -6233,6 +6237,13 @@ private:
                     if (SecondaryButton("##keys", "", Dp(36, 30), true, Icon::Sliders)) OpenKeyboardView();
                     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Keyboard & mouse keys");
                 }
+#if defined(MSCHARGED_PLATFORM_IOS)
+                if (shown == "touch")
+                {
+                    if (SecondaryButton("##touch_layout", "", Dp(36, 30), true, Icon::Sliders)) OpenTouchLayout();
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Place the on-screen controls");
+                }
+#endif
                 ImGui::PopID();
             }
             ImGui::EndTable();
@@ -6375,6 +6386,208 @@ private:
         else ControlsMain();
         if (std::fabs(shift) > 0.5f) ImGui::Unindent(shift);
     }
+
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // ------------------------------------------- on-screen controls layout
+    // Over the whole launcher, the on-screen controls where the game draws
+    // them (bootstrap/touch_layout.h; the screen is the game's). A finger
+    // drags a control to move it and selects it for the size buttons; Reset
+    // puts the default layout back; Save writes controls.touch_layout.
+    void OpenTouchLayout()
+    {
+        touch_layout_open_ = true;
+        touch_edit_ = ParseTouchLayout(draft_.touch_layout);
+        touch_selected_ = touch_drag_ = -1;
+    }
+
+    void CloseTouchLayout(bool save)
+    {
+        touch_layout_open_ = false;
+        touch_selected_ = touch_drag_ = -1;
+        if (!save) return;
+        const auto layout = FormatTouchLayout(touch_edit_);
+        if (layout != draft_.touch_layout)
+        {
+            draft_.touch_layout = layout;
+            dirty_ = true;
+        }
+        if (dirty_ && config_ok_) Save();
+    }
+
+    void TouchLayoutEditor()
+    {
+        if (!touch_layout_open_) return;
+        static constexpr const char* kNames[TouchItemCount] = {
+            "A", "B", "C", "Z", "Tacle (shake the Remote)", "Changer (shake the Nunchuk)", "+", "-", "1", "2",
+            "Quit (the cross)", "D-pad", "Stick"};
+        auto& io = ImGui::GetIO();
+        const ImVec2 size = io.DisplaySize;
+        const float w = size.x, h = size.y;
+        ImGui::SetNextWindowPos({0, 0});
+        ImGui::SetNextWindowSize(size);
+        ImGui::SetNextWindowFocus();
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, color::window);
+        ImGui::Begin("##touch_layout", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove
+            | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
+        const auto& fonts = CurrentFonts();
+        auto* draw = ImGui::GetWindowDrawList();
+
+        // The panel in the middle, where the game's picture is, not its controls.
+        const float panel_w = std::min(Dp(420), w - Dp(32)), panel_h = Dp(214);
+        const ImVec2 panel_min{(w - panel_w) * 0.5f, (h - panel_h) * 0.5f};
+        const ImVec2 panel_max{panel_min.x + panel_w, panel_min.y + panel_h};
+        const ImVec2 mouse = io.MousePos;
+        const bool over_panel = mouse.x >= panel_min.x && mouse.x < panel_max.x && mouse.y >= panel_min.y
+            && mouse.y < panel_max.y;
+
+        std::array<TouchCircle, TouchItemCount> circles;
+        for (std::size_t n = 0; n < TouchItemCount; ++n)
+            circles[n] = PlaceTouchItem(TouchItem(n), touch_edit_[n], w, h);
+        // A finger that lands on a control (a little outside it too, the
+        // nearest one) selects it and drags it while it moves.
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !over_panel)
+        {
+            int best = -1;
+            float nearest = FLT_MAX;
+            for (std::size_t n = 0; n < TouchItemCount; ++n)
+            {
+                const auto& c = circles[n];
+                const float distance = std::hypot(mouse.x - c.x, mouse.y - c.y) / std::max(c.r, 1.0f);
+                if (distance <= 1.25f && distance < nearest)
+                {
+                    best = int(n);
+                    nearest = distance;
+                }
+            }
+            touch_selected_ = touch_drag_ = best;
+            if (best >= 0) touch_grab_ = {circles[std::size_t(best)].x - mouse.x, circles[std::size_t(best)].y - mouse.y};
+        }
+        if (touch_drag_ >= 0)
+        {
+            const auto item = std::size_t(touch_drag_);
+            if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+            {
+                const float r = circles[item].r;
+                const float x = std::clamp(mouse.x + touch_grab_.x, std::min(r, w * 0.5f), std::max(w - r, w * 0.5f));
+                const float y = std::clamp(mouse.y + touch_grab_.y, std::min(r, h * 0.5f), std::max(h - r, h * 0.5f));
+                touch_edit_[item] = TouchPlacementAt(x, y, touch_edit_[item].scale, w, h);
+                circles[item] = PlaceTouchItem(TouchItem(item), touch_edit_[item], w, h);
+            }
+            else touch_drag_ = -1;
+        }
+
+        // The controls, as the game draws them; the selected one in the accent.
+        const float thickness = std::max(Dp(1.5f), std::min(w, h) * 0.004f);
+        const auto label = [&](const char* text, float font_size, float x, float y, ImU32 colour) {
+            const ImVec2 extent = fonts.button->CalcTextSizeA(font_size, FLT_MAX, 0, text);
+            draw->AddText(fonts.button, font_size, {x - extent.x * 0.5f, y - extent.y * 0.5f}, colour, text);
+        };
+        const ImU32 fill = IM_COL32(255, 255, 255, 40), line = IM_COL32(255, 255, 255, 140);
+        const ImU32 text = IM_COL32(255, 255, 255, 220);
+        if (touch_selected_ == int(TouchStick))
+        {
+            const auto zone = TouchStickZone(circles[TouchStick], w, h);
+            draw->AddRectFilled({zone.x0, zone.y0}, {zone.x1, zone.y1}, Col(color::accent, 0.07f), Dp(10));
+        }
+        for (std::size_t n = 0; n < TouchItemCount; ++n)
+        {
+            const auto& c = circles[n];
+            const bool selected = touch_selected_ == int(n);
+            const ImU32 edge = selected ? Col(color::accent) : line;
+            const float stroke = selected ? thickness * 2.0f : thickness;
+            if (n == TouchDpad)
+            {
+                if (selected) draw->AddCircle({c.x, c.y}, c.r, Col(color::accent, 0.5f), 0, thickness);
+                static constexpr const char* arrows[4] = {"^", "v", "<", ">"};
+                const auto pad = TouchDpadButtons(c);
+                for (std::size_t k = 0; k < 4; ++k)
+                {
+                    const auto& b = pad[k];
+                    draw->AddCircleFilled({b.x, b.y}, b.r, fill);
+                    draw->AddCircle({b.x, b.y}, b.r, edge, 0, stroke);
+                    label(arrows[k], b.r * 0.9f, b.x, b.y, text);
+                }
+                continue;
+            }
+            if (n == TouchStick)
+            {
+                draw->AddCircleFilled({c.x, c.y}, c.r, IM_COL32(255, 255, 255, 20));
+                draw->AddCircle({c.x, c.y}, c.r, edge, 0, stroke);
+                draw->AddCircleFilled({c.x, c.y}, c.r * 0.45f, IM_COL32(255, 255, 255, 70));
+                continue;
+            }
+            if (n == TouchQuit)
+            {
+                // Discreet in the game: a cross alone. A faint ring here to grab it.
+                draw->AddCircle({c.x, c.y}, c.r, selected ? edge : IM_COL32(255, 255, 255, 50), 0, stroke);
+                label(kTouchItems[n].label, c.r * 1.4f, c.x, c.y, IM_COL32(255, 255, 255, 160));
+                continue;
+            }
+            draw->AddCircleFilled({c.x, c.y}, c.r, fill);
+            draw->AddCircle({c.x, c.y}, c.r, edge, 0, stroke);
+            const float font_size = n == TouchHit ? c.r * 0.55f : n == TouchSwap ? c.r * 0.48f : c.r * 0.9f;
+            label(kTouchItems[n].label, font_size, c.x, c.y, text);
+        }
+
+        // The panel: what to do, the selected control's size, Reset, Cancel, Save.
+        draw->AddRectFilled(panel_min, panel_max, Col(color::card, 0.96f), Dp(14));
+        draw->AddRect(panel_min, panel_max, Col(color::border), Dp(14), 0, Dp(1));
+        const float pad = Dp(18);
+        ImGui::SetCursorScreenPos({panel_min.x + pad, panel_min.y + pad});
+        TextColored(fonts.heading, color::text, "On-screen controls");
+        ImGui::SetCursorScreenPos({panel_min.x + pad, ImGui::GetCursorScreenPos().y + Dp(2)});
+        ImGui::PushTextWrapPos(panel_max.x - pad);
+        TextWrappedColored(fonts.caption, color::muted,
+                           "Drag the controls where your thumbs fall. Touch one to change its size.");
+        ImGui::PopTextWrapPos();
+        const float size_y = panel_min.y + Dp(98);
+        ImGui::SetCursorScreenPos({panel_min.x + pad, size_y});
+        if (touch_selected_ < 0)
+        {
+            ImGui::SetCursorScreenPos({panel_min.x + pad, size_y + Dp(8)});
+            TextColored(fonts.body, color::dim, "No control selected");
+        }
+        else
+        {
+            auto& scale = touch_edit_[std::size_t(touch_selected_)].scale;
+            const float button = Dp(40);
+            ImGui::SetCursorScreenPos({panel_min.x + pad, size_y + Dp(8)});
+            TextColored(fonts.body, color::text, kNames[touch_selected_]);
+            const std::string percent = std::to_string(scale) + " %";
+            const float right = panel_max.x - pad;
+            ImGui::SetCursorScreenPos({right - button * 2 - Dp(66), size_y});
+            if (SecondaryButton("##smaller", "-", {button, Dp(34)}, scale > kMinTouchScale))
+                scale = std::max(kMinTouchScale, scale - kTouchScaleStep);
+            ImGui::SameLine(0, 0);
+            const ImVec2 at = ImGui::GetCursorScreenPos();
+            const ImVec2 extent = TextSize(fonts.body, percent.c_str());
+            DrawLabel(draw, fonts.body, {at.x + (Dp(66) - extent.x) * 0.5f, at.y + (Dp(34) - extent.y) * 0.5f},
+                      Col(color::text), percent.c_str());
+            ImGui::SetCursorScreenPos({right - button, size_y});
+            if (SecondaryButton("##bigger", "+", {button, Dp(34)}, scale < kMaxTouchScale))
+                scale = std::min(kMaxTouchScale, scale + kTouchScaleStep);
+        }
+        const float buttons_y = panel_max.y - pad - Dp(40);
+        const float gap = Dp(10), each = (panel_w - 2 * pad - 2 * gap) / 3;
+        ImGui::SetCursorScreenPos({panel_min.x + pad, buttons_y});
+        if (SecondaryButton("##touch_reset", "Reset", {each, Dp(40)}, touch_edit_ != DefaultTouchPlacements(),
+                            Icon::Refresh))
+        {
+            touch_edit_ = DefaultTouchPlacements();
+            touch_selected_ = touch_drag_ = -1;
+        }
+        ImGui::SetCursorScreenPos({panel_min.x + pad + each + gap, buttons_y});
+        const bool cancel = SecondaryButton("##touch_cancel", "Cancel", {each, Dp(40)});
+        ImGui::SetCursorScreenPos({panel_min.x + pad + 2 * (each + gap), buttons_y});
+        const bool save = PrimaryButton("##touch_save", "Save", {each, Dp(40)}, true, Icon::Check);
+        ImGui::End();
+        if (cancel || ImGui::IsKeyPressed(ImGuiKey_Escape, false)) CloseTouchLayout(false);
+        else if (save) CloseTouchLayout(true);
+    }
+#endif
 
     void OpenKeyboardView()
     {
@@ -8963,6 +9176,15 @@ private:
     std::map<std::string, int> remote_players_;
     std::unique_ptr<platform::WiimotePlayerLights> remote_lights_;
     std::set<std::string> wii_held_; // remotes kept through one missed status answer
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // The on-screen controls' layout editor: the layout being edited, the
+    // control the size buttons change and the one a finger drags (-1: none),
+    // and where on that control the finger holds it.
+    bool touch_layout_open_ = false;
+    TouchPlacements touch_edit_{};
+    int touch_selected_ = -1, touch_drag_ = -1;
+    ImVec2 touch_grab_{};
+#endif
     // Controls: keyboard & mouse keys view, and the keycap waiting for a key.
     bool keyboard_view_ = false;
     int capture_action_ = -1, capture_slot_ = -1;

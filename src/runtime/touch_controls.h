@@ -1,5 +1,7 @@
 #pragma once
 
+#include "bootstrap/touch_layout.h"
+
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_joystick.h>
 
@@ -34,12 +36,15 @@ namespace mscharged::runtime {
 // A finger that lands away from the buttons and the stick's corner points the
 // Wii Remote: it is sent to the game as a mouse (the mouse points for player 1
 // when the touch screen plays alone, platform/hardware_owner.cpp); A clicks.
+// The controls sit where controls.touch_layout puts them (the launcher's
+// layout editor; bootstrap/touch_layout.h), by default as described here.
 // Use it on the presentation thread, between frames.
 class TouchControls {
 public:
     // Turns off SDL's mouse events from touches (they would also be read as
     // the keyboard-and-mouse Remote's pointer and buttons) until destroyed.
-    TouchControls();
+    // `layout`: controls.touch_layout (bootstrap/touch_layout.h).
+    explicit TouchControls(const std::string& layout);
     ~TouchControls();
     TouchControls(const TouchControls&) = delete;
     TouchControls& operator=(const TouchControls&) = delete;
@@ -91,8 +96,10 @@ private:
     bool watching_ = false;
     bool gamepads_ = false; // holds a reference to SDL's gamepad subsystem
 
+    TouchPlacements placements_;
     float width_ = 0, height_ = 0;
     std::array<Circle, ControlCount> buttons_{};
+    TouchRect stickZone_{}; // where a finger that lands takes the stick
     Circle stickBase_{}; // the stick's resting place
     float stickRadius_ = 0;
     // Current state.

@@ -1,6 +1,7 @@
 #include "config.h"
 #include "display_shape.h"
 #include "graphics_card.h"
+#include "touch_layout.h"
 #include "platform/path.h"
 #include "platform/wiimote_ids.h"
 
@@ -105,6 +106,9 @@ Values Encode(const Settings& s)
             {"mods.texture_packs", s.texture_packs ? "true" : "false"}, {"mods.texture_folder", s.texture_folder},
             {"mods.texture_pack_order", s.texture_pack_order}, {"mods.texture_packs_off", s.texture_packs_off},
             {"mods.dump_textures", s.dump_textures ? "true" : "false"}};
+#if defined(MSCHARGED_PLATFORM_IOS)
+    values.emplace("controls.touch_layout", s.touch_layout);
+#endif
     for (std::size_t n = 0; n < KeyActionCount; ++n)
         values.emplace(std::string("keyboard.") + kKeyActions[n].key, s.keys[n]);
     for (std::size_t n = 0; n < HotkeyCount; ++n)
@@ -248,6 +252,11 @@ Settings Decode(const Values& values)
 #endif
                                             "off"});
     }
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // Read as far as it can be (bootstrap/touch_layout.h): never an error.
+    if (const auto it = values.find("controls.touch_layout"); it != values.end())
+        s.touch_layout = FormatTouchLayout(ParseTouchLayout(it->second));
+#endif
     // [keyboard] and [gamepadN]: one or two names per action, separated by " | ".
     const auto names = [&](const std::string& key, std::string& value, const char* what) {
         const auto it = values.find(key);

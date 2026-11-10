@@ -107,6 +107,10 @@ struct Settings
 #if defined(MSCHARGED_PLATFORM_IOS)
     // iOS: player 1 plays with the on-screen touch controls.
     std::array<std::string, 4> players{"touch", "off", "off", "off"};
+    // controls.touch_layout: where the on-screen controls sit and how big
+    // they are (bootstrap/touch_layout.h), set in the launcher's layout
+    // editor; empty for the default layout.
+    std::string touch_layout;
 #else
     std::array<std::string, 4> players{"keyboard", "off", "off", "off"};
 #endif

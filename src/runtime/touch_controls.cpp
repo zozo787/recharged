@@ -21,9 +21,13 @@
 
 namespace mscharged::runtime {
 namespace {
-// Labels in the overlay font's ASCII. French: the player's language.
-constexpr const char* kLabels[TouchControls::ControlCount] = {
-    "A", "B", "C", "Z", "Tacle", "Changer", "+", "-", "1", "2", "\xC3\x97", "^", "v", "<", ">"};
+// Labels in the overlay font's ASCII. French: the player's language. A to
+// the cross are bootstrap/touch_layout.h's.
+constexpr const char* kPadLabels[4] = {"^", "v", "<", ">"};
+const char* Label(int control)
+{
+    return control >= TouchControls::Up ? kPadLabels[control - TouchControls::Up] : kTouchItems[std::size_t(control)].label;
+}
 // Each control's gamepad input (the default layout, bootstrap/gamepad_actions.h).
 struct Input {
     int button = -1; // SDL_GamepadButton, or -1
@@ -48,9 +52,6 @@ constexpr Input kInputs[TouchControls::ControlCount] = {
 };
 // A finger presses a button a little outside its drawn circle.
 constexpr float kHitSlop = 1.25f;
-// The stick takes fingers that land in the lower left corner; elsewhere, away
-// from the buttons, a finger points the Wii Remote.
-constexpr float kStickZoneX = 0.40f, kStickZoneY = 0.45f;
 // The pointing finger's mouse (not SDL_TOUCH_MOUSEID, which the game ignores).
 constexpr SDL_MouseID kPointerMouse = 0x54434850; // "TCHP"
 
@@ -82,7 +83,7 @@ void Log(const char* format, ...)
 }
 } // namespace
 
-TouchControls::TouchControls()
+TouchControls::TouchControls(const std::string& layout) : placements_(ParseTouchLayout(layout))
 {
     if (const char* hint = SDL_GetHint(SDL_HINT_TOUCH_MOUSE_EVENTS)) {
         hadHint_ = true;
@@ -94,6 +95,7 @@ TouchControls::TouchControls()
     gamepads_ = SDL_InitSubSystem(SDL_INIT_GAMEPAD);
     watching_ = SDL_AddEventWatch(Watch, this);
     Log(watching_ ? "on" : "no event watch: %s", SDL_GetError());
+    Log("%s layout", layout.empty() ? "default" : "custom");
     // Now, before the input owner sets up the players: the touch player's
     // channel goes to this virtual gamepad's id (platform/hardware_owner.cpp).
     Attach();
@@ -188,41 +190,28 @@ void TouchControls::Layout(float width, float height)
 {
     width_ = width;
     height_ = height;
-    // Sizes follow the short side, so the controls keep their size in the
-    // hand on every screen; the right cluster sits under the right thumb.
+    // The saved layout (controls.touch_layout), in short sides of the screen:
+    // the controls keep their size and their distance from the thumbs on
+    // every screen.
+    static_assert(int(TouchQuit) == int(Quit) && int(TouchA) == int(A) && int(TouchSwap) == int(Item),
+                  "TouchControls::Control follows bootstrap/touch_layout.h");
+    for (int n = A; n <= Quit; ++n) {
+        const auto c = PlaceTouchItem(TouchItem(n), placements_[std::size_t(n)], width, height);
+        buttons_[n] = {c.x, c.y, c.r};
+    }
+    const auto pad = TouchDpadButtons(PlaceTouchItem(TouchDpad, placements_[TouchDpad], width, height));
+    for (int n = 0; n < 4; ++n) buttons_[Up + n] = {pad[std::size_t(n)].x, pad[std::size_t(n)].y, pad[std::size_t(n)].r};
+    const auto stick = PlaceTouchItem(TouchStick, placements_[TouchStick], width, height);
+    stickRadius_ = stick.r;
+    stickBase_ = {stick.x, stick.y, stick.r};
+    stickZone_ = TouchStickZone(stick, width, height);
     const float s = std::min(width, height);
-    const auto at = [&](float fromRight, float fromBottom, float radius) {
-        return Circle{width - fromRight * s, height - fromBottom * s, radius * s};
-    };
-    buttons_[A] = at(0.20f, 0.18f, 0.10f);
-    buttons_[B] = at(0.07f, 0.33f, 0.065f);
-    buttons_[Hit] = at(0.37f, 0.10f, 0.065f);
-    buttons_[Z] = at(0.37f, 0.29f, 0.06f);
-    buttons_[C] = at(0.22f, 0.41f, 0.055f);
-    buttons_[Item] = at(0.07f, 0.52f, 0.05f);
-    // Away from the top edge, where iOS delays touches for its own gestures.
-    // - and + as on the Remote. No HOME: the game is built without its HOME
-    // Menu (MSCHARGED_DIAGNOSTIC_FRONTEND_HOME is off), so HOME does nothing.
-    buttons_[Minus] = {width * 0.5f - 0.07f * s, 0.15f * s, 0.045f * s};
-    buttons_[Plus] = {width * 0.5f + 0.07f * s, 0.15f * s, 0.045f * s};
-    // 1 and 2 at the top right, as on a Remote held sideways.
-    buttons_[One] = {width - 0.21f * s, 0.15f * s, 0.045f * s};
-    buttons_[Two] = {width - 0.09f * s, 0.15f * s, 0.045f * s};
-    // Small, out of the way: it only opens a confirmation.
-    buttons_[Quit] = {0.06f * s, 0.07f * s, 0.032f * s};
     const float dialogW = 0.70f * s, dialogH = 0.34f * s;
     dialog_ = {width * 0.5f - dialogW * 0.5f, height * 0.5f - dialogH * 0.5f,
                width * 0.5f + dialogW * 0.5f, height * 0.5f + dialogH * 0.5f};
     const float buttonW = 0.27f * s, buttonH = 0.10f * s, gap = 0.04f * s, bottom = dialog_.y1 - 0.05f * s;
     dialogCancel_ = {width * 0.5f - gap * 0.5f - buttonW, bottom - buttonH, width * 0.5f - gap * 0.5f, bottom};
     dialogQuit_ = {width * 0.5f + gap * 0.5f, bottom - buttonH, width * 0.5f + gap * 0.5f + buttonW, bottom};
-    const float padX = 0.16f * s, padY = 0.24f * s, step = 0.07f * s, padRadius = 0.037f * s;
-    buttons_[Up] = {padX, padY - step, padRadius};
-    buttons_[Down] = {padX, padY + step, padRadius};
-    buttons_[Left] = {padX - step, padY, padRadius};
-    buttons_[Right] = {padX + step, padY, padRadius};
-    stickRadius_ = 0.12f * s;
-    stickBase_ = {0.22f * s, height - 0.22f * s, stickRadius_};
     ++revision_;
 }
 
@@ -345,9 +334,9 @@ void TouchControls::Service(float width, float height)
             if (!finger.assigned) {
                 finger.assigned = true;
                 finger.control = ButtonAt(x, y);
-                // A finger landing on the left, away from the buttons, holds
-                // the stick: its centre is where the finger landed.
-                if (finger.control == None && !stickActive && x < width * kStickZoneX && y > height * kStickZoneY) {
+                // A finger landing in the stick's corner, away from the
+                // buttons, holds the stick: its centre is where it landed.
+                if (finger.control == None && !stickActive && stickZone_.Contains(x, y)) {
                     finger.stick = true;
                     stickActive = true;
                     stickX = x;
@@ -463,13 +452,13 @@ void TouchControls::Draw(ImDrawList* draw, ImFont* font) const
         const auto& b = buttons_[n];
         if (n == Quit) {
             // Discreet: a faint cross, no disc.
-            centred(kLabels[n], b.r * 1.4f, b.x, b.y, IM_COL32(255, 255, 255, 110));
+            centred(Label(n), b.r * 1.4f, b.x, b.y, IM_COL32(255, 255, 255, 110));
             continue;
         }
         draw->AddCircleFilled({b.x, b.y}, b.r, pressed_[n] ? fillPressed : fill);
         draw->AddCircle({b.x, b.y}, b.r, line, 0, thickness);
         const float size = n == Hit ? b.r * 0.55f : n == Item ? b.r * 0.48f : b.r * 0.9f;
-        centred(kLabels[n], size, b.x, b.y, text);
+        centred(Label(n), size, b.x, b.y, text);
     }
     draw->AddCircleFilled({stickX_, stickY_}, stickRadius_, IM_COL32(255, 255, 255, stickActive_ ? 35 : 20));
     draw->AddCircle({stickX_, stickY_}, stickRadius_, line, 0, thickness);
