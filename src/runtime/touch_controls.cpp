@@ -45,6 +45,22 @@ constexpr float kHitSlop = 1.25f;
 // The stick takes fingers that land in this left part of the screen.
 constexpr float kStickZone = 0.45f;
 
+// The name of a connected physical controller, or empty when there is none.
+std::string PhysicalGamepad(SDL_JoystickID own)
+{
+    int count = 0;
+    SDL_JoystickID* ids = SDL_GetGamepads(&count);
+    if (!ids) return {};
+    std::string found;
+    for (int n = 0; n < count && found.empty(); ++n)
+        if (ids[n] != own && !SDL_IsJoystickVirtual(ids[n])) {
+            const char* name = SDL_GetGamepadNameForID(ids[n]);
+            found = name && *name ? name : "unnamed controller";
+        }
+    SDL_free(ids);
+    return found;
+}
+
 void Log(const char* format, ...) SDL_PRINTF_VARARG_FUNC(1);
 void Log(const char* format, ...)
 {
@@ -219,9 +235,36 @@ void TouchControls::Service(float width, float height)
         }
     }
 
-    // A player chose the touch screen (controls.playerN = touch): the controls
-    // stay, whatever other controllers are connected.
-    if (first) Log("shown");
+    // A controller that connects plays instead (platform/desktop_wpad.cpp):
+    // the controls hide, release everything and come back when it is gone.
+    // Their virtual gamepad stays attached, so its id keeps the touch slot.
+    const std::string physical = PhysicalGamepad(id_);
+    const bool visible = physical.empty();
+    if (visible != visible_ || first) {
+        visible_ = visible;
+        ++revision_;
+        if (visible) Log("shown");
+        else Log("hidden: %s plays instead", physical.c_str());
+    }
+    if (!visible_) {
+        {
+            std::lock_guard lock(mutex_);
+            for (auto& [id, finger] : fingers_) finger.assigned = true, finger.control = None, finger.stick = false;
+        }
+        pressed_ = {};
+        stickActive_ = false;
+        knobX_ = stickX_ = stickBase_.x;
+        knobY_ = stickY_ = stickBase_.y;
+        if (joystick_) {
+            for (int n = 0; n < ControlCount; ++n) {
+                if (kInputs[n].button >= 0) SDL_SetJoystickVirtualButton(joystick_, kInputs[n].button, false);
+                if (kInputs[n].axis >= 0) SDL_SetJoystickVirtualAxis(joystick_, kInputs[n].axis, 0);
+            }
+            SDL_SetJoystickVirtualAxis(joystick_, SDL_GAMEPAD_AXIS_LEFTX, 0);
+            SDL_SetJoystickVirtualAxis(joystick_, SDL_GAMEPAD_AXIS_LEFTY, 0);
+        }
+        return;
+    }
 
     std::array<bool, ControlCount> pressed{};
     bool stickActive = false;

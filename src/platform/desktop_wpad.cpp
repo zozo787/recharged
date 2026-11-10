@@ -666,6 +666,18 @@ void ServiceDesktopWpad() {
                     slot = &state.pads[index];
                     break;
                 }
+            // A controller that connects plays in place of the touch controls:
+            // on a phone or tablet it is there to play alone. Their virtual
+            // gamepad leaves the slot and takes it back once the controller
+            // is gone (it stays attached, so its id stays the same).
+            if (!slot && !touch && state.settings.touch_slot >= 0) {
+                auto& held = state.pads[state.settings.touch_slot];
+                if (!held || held->input_id == SDL_JoystickID(state.settings.touch_id)) {
+                    if (held) Retire(held);
+                    slot = &held;
+                    index = state.settings.touch_slot;
+                }
+            }
             if (!slot) continue;
             auto* input = SDL_OpenGamepad(ids[n]);
             if (!input) continue;

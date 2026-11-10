@@ -23,6 +23,8 @@ namespace mscharged::runtime {
 // opponent), "Objet" shakes the Nunchuk (switch items), + pauses and the small
 // pad is the D-pad. Created only when a player chose the touch screen
 // (controls.playerN = touch), before the input owner sets up the players.
+// While a physical controller is connected it plays instead and the controls
+// hide (the virtual gamepad stays attached, released).
 // Use it on the presentation thread, between frames.
 class TouchControls {
 public:
