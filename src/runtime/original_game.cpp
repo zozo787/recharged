@@ -334,9 +334,11 @@ int mscharged::RunOriginalGame(int argc, char** argv,
             mscharged::LoadLaunch(launchOptions,executableDirectory);
         mscharged::ApplyGameModeDisplay(launch,mscharged::UnderGamescope());
 #if defined(MSCHARGED_PLATFORM_IOS)
-        // iOS: always the whole screen at its own resolution; there is no
-        // window to size or remember.
-        launch.settings.fullscreen=true;
+        // iOS: the window is the whole screen and follows its rotation; SDL's
+        // fullscreen mode would pin it to the display mode read at start (on
+        // the foldable iPhone, a portrait size on a landscape screen). It is
+        // made borderless below, which also hides the status bar.
+        launch.settings.fullscreen=false;
         launch.settings.fullscreen_resolution="desktop";
         launch.settings.remember_window=false;
 #endif
@@ -598,6 +600,9 @@ int mscharged::RunOriginalGame(int argc, char** argv,
         mscharged::platform::SessionLogLine(launch.settings.fullscreen ? "Startup: switching to fullscreen"
                                                                         : "Startup: setting the window size");
         Check(SDL_SetWindowFullscreen(host.window,launch.settings.fullscreen), "Requested launch window mode rejected");
+#if defined(MSCHARGED_PLATFORM_IOS)
+        SDL_SetWindowBordered(host.window,false);
+#endif
         if(nativeSend) {
             // Existing Aurora policy fixes the internal source EFB at 1x.
             // Original SC/VI signal aspect controls independent desktop output.
@@ -617,7 +622,12 @@ int mscharged::RunOriginalGame(int argc, char** argv,
             if(!launch.settings.fullscreen && launch.settings.remember_window &&
                mscharged::runtime::RestoreWindowPosition(host.window,launch.settings.position,launch.settings.monitor))
                 mscharged::platform::SessionLogLine("Startup: window at its last position "+launch.settings.position);
-            mscharged::runtime::LockWindowShape(host.window,!launch.settings.fullscreen && !stretch && !widerOn,
+#if defined(MSCHARGED_PLATFORM_IOS)
+            constexpr bool shapedWindow=false; // the screen's own shape
+#else
+            constexpr bool shapedWindow=true;
+#endif
+            mscharged::runtime::LockWindowShape(host.window,shapedWindow && !launch.settings.fullscreen && !stretch && !widerOn,
                 aspectWidth,aspectHeight);
             // display.resolution: the source EFB's render size. Viewport, scissor,
             // copies and pixel accesses map the game's 640x448 coordinates onto it.

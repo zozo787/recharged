@@ -506,8 +506,11 @@ public:
         // Created at the design size, then fitted once the window knows its
         // display's pixel density and content scale.
 #if defined(MSCHARGED_PLATFORM_IOS)
-        // iOS: the whole screen, like any app; the layout follows its size.
-        constexpr SDL_WindowFlags kPlatformWindow = SDL_WINDOW_FULLSCREEN | SDL_WINDOW_BORDERLESS;
+        // iOS: a window is always the whole screen and follows its rotation;
+        // borderless hides the status bar. Not SDL_WINDOW_FULLSCREEN: it pins
+        // the window to the display mode read at start, and the foldable
+        // iPhone, unfolded, drew a portrait-sized picture on a landscape screen.
+        constexpr SDL_WindowFlags kPlatformWindow = SDL_WINDOW_BORDERLESS;
 #else
         constexpr SDL_WindowFlags kPlatformWindow = 0;
 #endif
@@ -522,6 +525,9 @@ public:
         SDL_SetRenderVSync(renderer_, 1);
         metrics_ = CurrentMetrics();
         ApplyWindowMetrics(true);
+#if defined(MSCHARGED_PLATFORM_IOS)
+        LogScreen("created");
+#endif
 
         const auto resources = base_ / "assets/launcher";
         // The header's three layers, the same proportions: the scene, gold strokes
@@ -629,6 +635,16 @@ public:
                     RefreshGamepad();
                 if (event.type == SDL_EVENT_DISPLAY_ADDED || event.type == SDL_EVENT_DISPLAY_REMOVED)
                     RefreshDisplays();
+#if defined(MSCHARGED_PLATFORM_IOS)
+                // Screen sizes and rotations in the log (foldable iPhone, docs/IOS_PORT.md).
+                if (event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED
+                    || event.type == SDL_EVENT_DISPLAY_ORIENTATION)
+                {
+                    char what[160] = "";
+                    SDL_GetEventDescription(&event, what, int(sizeof what));
+                    LogScreen(what);
+                }
+#endif
                 // On the Gameplay page a dropped texture pack is added; anything
                 // else is a game image or folder, as on the other pages.
                 if (event.type == SDL_EVENT_DROP_FILE && event.drop.data
@@ -713,6 +729,26 @@ public:
     }
 
 private:
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // The window's and the screen's sizes and orientation, in the session log.
+    void LogScreen(const char* why) const
+    {
+        int w = 0, h = 0, pw = 0, ph = 0;
+        SDL_GetWindowSize(window_, &w, &h);
+        SDL_GetWindowSizeInPixels(window_, &pw, &ph);
+        const SDL_DisplayID display = SDL_GetDisplayForWindow(window_);
+        SDL_Rect bounds{};
+        SDL_GetDisplayBounds(display, &bounds);
+        const SDL_DisplayMode* mode = SDL_GetDesktopDisplayMode(display);
+        char line[320];
+        std::snprintf(line, sizeof line,
+                      "Screen (%s): window %dx%d, %dx%d pixels; display %dx%d, desktop mode %dx%d, orientation %d",
+                      why, w, h, pw, ph, bounds.w, bounds.h, mode ? mode->w : 0, mode ? mode->h : 0,
+                      int(SDL_GetCurrentDisplayOrientation(display)));
+        platform::SessionLogLine(line);
+    }
+#endif
+
     // ---------------------------------------------------------------- scale
     UiMetrics CurrentMetrics() const
     {
@@ -8961,6 +8997,8 @@ int main(int argc, char** argv)
     if (int code = 0; mscharged::platform::LeaveAppTranslocation(code)) return code;
 #endif
 #if defined(MSCHARGED_PLATFORM_IOS)
+    // Landscape only, as Info.plist says; SDL also uses it to orient windows.
+    SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
     // iOS starts apps in "/": work in Documents, where the player's files are
     // (relative paths of recharged.ini, screenshots/).
     {

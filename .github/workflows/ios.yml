@@ -16,7 +16,7 @@ on:
       runner:
         description: macOS runner label (macos-15-intel, macos-15, macos-26, or a newer image)
         type: string
-        default: macos-15-intel
+        default: xcode-27
       xcode:
         description: Xcode to build with (a version such as 26.3, or newest on the runner)
         type: string
@@ -39,11 +39,12 @@ concurrency:
 jobs:
   ios:
     name: ios-arm64
-    # Apple Silicon runners (macos-15) are faster but GitHub often has none free
-    # ("not acquired by Runner ... capacity constraints"); the Intel runner builds
-    # the same arm64 iOS app, about three times slower when the cache is cold.
-    # A repository variable IOS_RUNNER=macos-15 switches pushes back to arm64.
-    runs-on: ${{ inputs.runner || vars.IOS_RUNNER || 'macos-15-intel' }}
+    # xcode-27: GitHub's Xcode 27 image (public preview, arm64, macOS 27). Its
+    # iOS 27 SDK is needed for the foldable iPhone: an app built with an older
+    # SDK runs there in a 16:9 compatibility frame. Older images, e.g. when
+    # Apple Silicon runners are scarce: macos-15-intel (Xcode 26.3) by hand,
+    # or the repository variable IOS_RUNNER.
+    runs-on: ${{ inputs.runner || vars.IOS_RUNNER || 'xcode-27' }}
     timeout-minutes: 330
     defaults:
       run:
