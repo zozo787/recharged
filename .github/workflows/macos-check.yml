@@ -1,0 +1,103 @@
+name: macOS check
+
+# Builds the regular macOS program and a game module from this branch, to
+# check that the iOS port leaves the macOS build working (docs/IOS_PORT.md).
+# By hand only. The release workflow's macOS jobs run on Apple Silicon
+# runners, which GitHub often has none free; the Intel runner, with the same
+# Xcode as the release builds, compiles the same macOS code.
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: macOS runner label
+        type: string
+        default: macos-15-intel
+      xcode:
+        description: Xcode version on the runner
+        type: string
+        default: '26.3'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: macOS (${{ inputs.runner }})
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 240
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_TERM_COLOR: always
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_NOHASHDIR: 'true'
+      CCACHE_MAXSIZE: 3G
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          submodules: false
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install macOS tools
+        env:
+          XCODE: ${{ inputs.xcode }}
+        run: |
+          uname -m
+          sudo xcode-select -s "/Applications/Xcode_$XCODE.app"
+          clang++ --version
+          brew install cmake ninja tcl-tk ccache
+          echo "$(brew --prefix tcl-tk)/bin" >> "$GITHUB_PATH"
+          echo 'CC=clang' >> "$GITHUB_ENV"
+          echo 'CXX=clang++' >> "$GITHUB_ENV"
+          cores=$(sysctl -n hw.ncpu)
+          echo "CMAKE_BUILD_PARALLEL_LEVEL=$cores" >> "$GITHUB_ENV"
+          echo "CARGO_BUILD_JOBS=$cores" >> "$GITHUB_ENV"
+          echo "CCACHE_DIR=$RUNNER_TEMP/ccache" >> "$GITHUB_ENV"
+      - name: Select Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          cargo --version
+      - name: Prepare pinned dependencies
+        run: python tools/setup_dependencies.py --shallow
+      - name: Restore compiler cache
+        id: ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-macos-check-${{ runner.arch }}-${{ github.sha }}
+          restore-keys: ccache-macos-check-${{ runner.arch }}-
+      - name: Configure for macOS
+        run: >-
+          cmake --preset release
+          -DBUILD_TESTING=OFF
+          -DMSCHARGED_FORMAT_PREPARED_SOURCES=OFF
+          -DMSCHARGED_BUILD_CHANNEL=dev
+          -DMSCHARGED_AUTOPILOT=OFF
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DCMAKE_OBJC_COMPILER_LAUNCHER=ccache
+          -DCMAKE_OBJCXX_COMPILER_LAUNCHER=ccache
+      # The program and one game module: the other three are the same sources.
+      - name: Build for macOS
+        run: cmake --build --preset release --target mscharged mscharged_original_frontend_module_eu
+      - name: Save compiler cache
+        if: always() && steps.ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ steps.ccache.outputs.cache-primary-key }}
+      - name: Check the program
+        run: |
+          ./build/release/recharged --version
+          ./build/release/recharged --help > /dev/null
+          ls -d build/release/Recharged.app
+          ls build/release/recharged_game_eu.*
