@@ -6,8 +6,10 @@ name: macOS check
 # runners, which GitHub often has none free; the Intel runner, with the same
 # Xcode as the release builds, compiles the same macOS code.
 on:
-  # Also when this file changes on ios-port (GitHub only offers a workflow to
-  # start by hand once it has run).
+  # Also when this file changes on ios-port: GitHub offers "Run workflow" only
+  # for workflows on the repository's default branch (stable), which this one
+  # is not on. To run it, change this file on ios-port (last: the touch
+  # controls built for iOS only, 7830ea2).
   push:
     branches: [ios-port]
     paths: ['.github/workflows/macos-check.yml']
