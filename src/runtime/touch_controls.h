@@ -74,10 +74,6 @@ private:
         bool stick = false;  // it moves the stick
         bool pointer = false; // it points the Wii Remote
     };
-    struct Circle {
-        float x = 0, y = 0, r = 0;
-    };
-
     static bool SDLCALL Watch(void* self, SDL_Event* event);
     void Layout(float width, float height);
     int ButtonAt(float x, float y) const; // pixels; None outside every button
@@ -100,9 +96,9 @@ private:
     TouchPlacements placements_;
     float opacity_ = 1.0f;
     float width_ = 0, height_ = 0;
-    std::array<Circle, ControlCount> buttons_{};
+    std::array<TouchCircle, ControlCount> buttons_{};
     TouchRect stickZone_{}; // where a finger that lands takes the stick
-    Circle stickBase_{}; // the stick's resting place
+    TouchCircle stickBase_{}; // the stick's resting place
     float stickRadius_ = 0;
     // Current state.
     std::array<bool, ControlCount> pressed_{};
@@ -122,13 +118,9 @@ private:
     int windowW_ = 0, windowH_ = 0;
     unsigned loggedResizes_ = 0;
     bool loggedService_ = false;
-    // The cross and its confirmation window, in surface pixels.
-    struct Rect {
-        float x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-        bool Contains(float x, float y) const { return x >= x0 && x < x1 && y >= y0 && y < y1; }
-    };
-    Rect dialog_{}, dialogQuit_{}, dialogCancel_{};
-    bool confirming_ = false;    // "Quitter la partie ?" is open
+    // The cross's confirmation window and its buttons, in surface pixels.
+    TouchRect dialog_{}, dialogQuit_{}, dialogCancel_{};
+    bool confirming_ = false;    // "Quitter le jeu ?" is open
     bool quitWasPressed_ = false; // the cross was pressed on the last frame
     bool quitSent_ = false;       // the close request went out
     // Frames a tapped button stays pressed.
