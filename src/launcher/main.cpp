@@ -764,11 +764,6 @@ private:
 
     void ApplyWindowMetrics(bool initial)
     {
-#if defined(MSCHARGED_PLATFORM_IOS)
-        // Always the whole screen: no window size or minimum to fit.
-        (void)initial;
-        return;
-#endif
         SDL_Rect usable{};
         float width = 0.0f, height = 0.0f;
         if (!capture_ && SDL_GetDisplayUsableBounds(SDL_GetDisplayForWindow(window_), &usable))

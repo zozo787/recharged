@@ -74,10 +74,9 @@
         <string>UIInterfaceOrientationLandscapeLeft</string>
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
-    <!-- No UIRequiresFullScreen: deprecated since iOS/iPadOS 26, and on the
-         foldable iPhone such an app ran in a 16:9 compatibility frame with a
-         scale-up button (docs/IOS_PORT.md). The launcher's layout and the game
-         follow the window's size. -->
+    <!-- The whole screen: no Split View or Slide Over beside the game. -->
+    <key>UIRequiresFullScreen</key>
+    <true/>
     <!-- An empty launch screen gives the app the device's native resolution. -->
     <key>UILaunchScreen</key>
     <dict/>
