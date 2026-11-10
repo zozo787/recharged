@@ -4,6 +4,7 @@
 
 #include <SDL3/SDL_gamepad.h>
 #include <SDL3/SDL_hints.h>
+#include <SDL3/SDL_init.h>
 #include <SDL3/SDL_log.h>
 #include <SDL3/SDL_stdinc.h>
 
@@ -79,6 +80,9 @@ TouchControls::TouchControls()
         previousHint_ = hint;
     }
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+    // Our own reference: the controller count at start opens and closes the
+    // gamepad subsystem, which would otherwise take the virtual gamepad along.
+    gamepads_ = SDL_InitSubSystem(SDL_INIT_GAMEPAD);
     watching_ = SDL_AddEventWatch(Watch, this);
     Log(watching_ ? "on" : "no event watch: %s", SDL_GetError());
     // Now, before the game counts its controllers (platform/hardware_owner.cpp):
@@ -94,6 +98,7 @@ TouchControls::~TouchControls()
 {
     if (watching_) SDL_RemoveEventWatch(Watch, this);
     Detach();
+    if (gamepads_) SDL_QuitSubSystem(SDL_INIT_GAMEPAD);
     if (hadHint_) SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, previousHint_.c_str());
     else SDL_ResetHint(SDL_HINT_TOUCH_MOUSE_EVENTS);
 }

@@ -775,6 +775,14 @@ int mscharged::RunOriginalGame(int argc, char** argv,
         // Original WPADControlSpeaker ON: 0x08 in the European game, 0x80 in the others.
         wpad.remote_speaker_reg01=release->code==mscharged::GameCode::Europe ? 0x08 : 0x80;
         wpad.bluetooth_search=launch.settings.bluetooth_search;
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS: a stick and buttons on the screen, hidden while a controller
+        // is connected (runtime/touch_controls.h). Created before the input
+        // owner counts the connected controllers: with none it would turn
+        // gamepads off for the whole run, the touch controls' one included.
+        std::optional<mscharged::runtime::TouchControls> touchControls;
+        if(nativeSend) touchControls.emplace();
+#endif
         mscharged::platform::InitializeNativeHardwareInput(host.window,wpad,
             mscharged::platform::GetNativeSTMInput(), desktop, players);
         {
@@ -1298,13 +1306,8 @@ int mscharged::RunOriginalGame(int argc, char** argv,
                     launch.settings.fps_overlay_corner).value_or(mscharged::runtime::OverlayCorner::TopRight))
                                             : std::nullopt);
 #if defined(MSCHARGED_PLATFORM_IOS)
-        // iOS: a stick and buttons on the screen, hidden while a controller
-        // is connected (runtime/touch_controls.h).
-        std::optional<mscharged::runtime::TouchControls> touchControls;
-        if(hostOverlay) {
-            touchControls.emplace();
-            hostOverlay->SetTouchControls(&*touchControls);
-        }
+        // Drawn by the overlay (the controls were created before the input owner).
+        if(hostOverlay && touchControls) hostOverlay->SetTouchControls(&*touchControls);
 #endif
         // display.remember_window: not in Steam's Game Mode, for a window size
         // from the command line or without a settings file.

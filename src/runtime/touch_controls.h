@@ -68,6 +68,7 @@ private:
     std::string previousHint_;
     bool hadHint_ = false;
     bool watching_ = false;
+    bool gamepads_ = false; // holds a reference to SDL's gamepad subsystem
 
     float width_ = 0, height_ = 0;
     std::array<Circle, ControlCount> buttons_{};
