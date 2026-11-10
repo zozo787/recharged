@@ -24,7 +24,10 @@ namespace mscharged::runtime {
 // pad is the D-pad. Created only when a player chose the touch screen
 // (controls.playerN = touch), before the input owner sets up the players.
 // While a physical controller is connected it plays instead and the controls
-// hide (the virtual gamepad stays attached, released).
+// hide (the virtual gamepad stays attached, released). A finger that lands
+// away from the buttons and the stick's corner points the Wii Remote: it is
+// sent to the game as a mouse (the mouse points for player 1 when the touch
+// screen plays alone, platform/hardware_owner.cpp); A clicks.
 // Use it on the presentation thread, between frames.
 class TouchControls {
 public:
@@ -57,6 +60,7 @@ private:
         bool assigned = false; // given a control (or none) by Service
         int control = None;  // the button it presses, or None
         bool stick = false;  // it moves the stick
+        bool pointer = false; // it points the Wii Remote
     };
     struct Circle {
         float x = 0, y = 0, r = 0;
@@ -90,6 +94,7 @@ private:
 
     SDL_JoystickID id_ = 0;
     SDL_Joystick* joystick_ = nullptr;
+    SDL_WindowID window_ = 0; // the window the fingers touch (guarded by mutex_)
 
     // Diagnostics for the session log (docs/IOS_PORT.md): what the controls
     // see on the device. Counters guarded by mutex_.
@@ -98,6 +103,7 @@ private:
     int windowW_ = 0, windowH_ = 0;
     unsigned loggedFingers_ = 0, loggedResizes_ = 0;
     bool loggedService_ = false;
+    bool loggedPointer_ = false;
     std::array<bool, ControlCount> loggedPress_{};
     std::chrono::steady_clock::time_point lastResizeLog_{};
 };

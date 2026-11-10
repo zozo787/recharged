@@ -7,6 +7,8 @@
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_log.h>
 #include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_timer.h>
+#include <SDL3/SDL_video.h>
 
 #include <imgui.h>
 
@@ -42,8 +44,11 @@ constexpr Input kInputs[TouchControls::ControlCount] = {
 };
 // A finger presses a button a little outside its drawn circle.
 constexpr float kHitSlop = 1.25f;
-// The stick takes fingers that land in this left part of the screen.
-constexpr float kStickZone = 0.45f;
+// The stick takes fingers that land in the lower left corner; elsewhere, away
+// from the buttons, a finger points the Wii Remote.
+constexpr float kStickZoneX = 0.40f, kStickZoneY = 0.45f;
+// The pointing finger's mouse (not SDL_TOUCH_MOUSEID, which the game ignores).
+constexpr SDL_MouseID kPointerMouse = 0x54434850; // "TCHP"
 
 // The name of a connected physical controller, or empty when there is none.
 std::string PhysicalGamepad(SDL_JoystickID own)
@@ -109,6 +114,7 @@ bool SDLCALL TouchControls::Watch(void* self, SDL_Event* event)
         auto& finger = controls.fingers_[event->tfinger.fingerID];
         finger.x = event->tfinger.x;
         finger.y = event->tfinger.y;
+        controls.window_ = event->tfinger.windowID;
         if (event->type == SDL_EVENT_FINGER_DOWN && controls.fingerDowns_++ == 0) {
             controls.firstX_ = finger.x;
             controls.firstY_ = finger.y;
@@ -269,9 +275,14 @@ void TouchControls::Service(float width, float height)
     std::array<bool, ControlCount> pressed{};
     bool stickActive = false;
     float stickX = stickX_, stickY = stickY_, knobX = knobX_, knobY = knobY_;
+    bool pointing = false;
+    float pointX = 0, pointY = 0; // window-normalized
+    SDL_WindowID window = 0;
     {
         std::lock_guard lock(mutex_);
-        for (const auto& [id, finger] : fingers_) stickActive |= finger.stick;
+        window = window_;
+        bool pointerTaken = false;
+        for (const auto& [id, finger] : fingers_) stickActive |= finger.stick, pointerTaken |= finger.pointer;
         for (auto& [id, finger] : fingers_) {
             const float x = finger.x * width, y = finger.y * height;
             if (!finger.assigned) {
@@ -279,14 +290,24 @@ void TouchControls::Service(float width, float height)
                 finger.control = ButtonAt(x, y);
                 // A finger landing on the left, away from the buttons, holds
                 // the stick: its centre is where the finger landed.
-                if (finger.control == None && !stickActive && x < width * kStickZone && y > height * 0.3f) {
+                if (finger.control == None && !stickActive && x < width * kStickZoneX && y > height * kStickZoneY) {
                     finger.stick = true;
                     stickActive = true;
                     stickX = x;
                     stickY = y;
                 }
+                else if (finger.control == None && !pointerTaken) {
+                    finger.pointer = true;
+                    pointerTaken = true;
+                }
             }
-            else if (!finger.stick) finger.control = ButtonAt(x, y); // slides between buttons
+            if (finger.pointer) {
+                pointing = true;
+                pointX = finger.x;
+                pointY = finger.y;
+                continue; // it presses nothing, even over a button
+            }
+            if (!finger.stick) finger.control = ButtonAt(x, y); // slides between buttons
             if (finger.stick) {
                 float dx = x - stickX, dy = y - stickY;
                 const float length = std::hypot(dx, dy);
@@ -318,6 +339,26 @@ void TouchControls::Service(float width, float height)
     pressed_ = pressed;
     stickActive_ = stickActive;
     stickX_ = stickX, stickY_ = stickY, knobX_ = knobX, knobY_ = knobY;
+
+    // The pointing finger as a mouse, every frame while it is down: the game
+    // keeps a mouse pointer for 3 s after its last motion.
+    if (pointing && window) {
+        int w = 0, h = 0;
+        if (SDL_Window* target = SDL_GetWindowFromID(window); target && SDL_GetWindowSize(target, &w, &h)) {
+            SDL_Event motion{};
+            motion.type = SDL_EVENT_MOUSE_MOTION;
+            motion.motion.timestamp = SDL_GetTicksNS();
+            motion.motion.windowID = window;
+            motion.motion.which = kPointerMouse;
+            motion.motion.x = pointX * float(w);
+            motion.motion.y = pointY * float(h);
+            SDL_PushEvent(&motion);
+            if (!loggedPointer_) {
+                loggedPointer_ = true;
+                Log("first pointing at %.0f, %.0f of a %dx%d window", motion.motion.x, motion.motion.y, w, h);
+            }
+        }
+    }
 
     if (!joystick_) return;
     for (int n = 0; n < ControlCount; ++n) {

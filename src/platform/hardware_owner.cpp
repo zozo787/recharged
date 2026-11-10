@@ -304,7 +304,9 @@ void InitializeNativeHardwareInput(SDL_Window* window, WpadSDLSettings settings,
             int playing = 0;
             for (const auto& [id, channel] : players.remotes) playing += channel >= 0;
             for (const int channel : players.gamepads) playing += channel >= 0;
-            if (players.mouse_with_controller && playing == 1) {
+            playing += players.touch >= 0;
+            // The touch screen points with a finger, as a mouse (runtime/touch_controls.h).
+            if ((players.mouse_with_controller || players.touch == 0) && playing == 1) {
                 desktop.mouse = true;
                 desktop.mouse_player_channel = 0;
             }
