@@ -23,7 +23,7 @@ namespace mscharged::runtime {
 namespace {
 // Labels in the overlay font's ASCII. French: the player's language.
 constexpr const char* kLabels[TouchControls::ControlCount] = {
-    "A", "B", "C", "Z", "Tacle", "Objet", "+", "HOME", "-", "1", "2", "\xC3\x97", "^", "v", "<", ">"};
+    "A", "B", "C", "Z", "Tacle", "Objet", "+", "-", "1", "2", "\xC3\x97", "^", "v", "<", ">"};
 // Each control's gamepad input (the default layout, bootstrap/gamepad_actions.h).
 struct Input {
     int button = -1; // SDL_GamepadButton, or -1
@@ -37,7 +37,6 @@ constexpr Input kInputs[TouchControls::ControlCount] = {
     {-1, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER},    // shake the Remote: hit an opponent
     {SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, -1}, // shake the Nunchuk: switch items
     {SDL_GAMEPAD_BUTTON_START, -1},          // +
-    {SDL_GAMEPAD_BUTTON_GUIDE, -1},          // HOME
     {SDL_GAMEPAD_BUTTON_BACK, -1},           // -
     {SDL_GAMEPAD_BUTTON_WEST, -1},           // 1
     {SDL_GAMEPAD_BUTTON_NORTH, -1},          // 2
@@ -158,7 +157,7 @@ void TouchControls::Attach()
     // order of the mask's bits, so with all of them the joystick's button and
     // axis numbers are the SDL_GamepadButton/SDL_GamepadAxis values set below.
     // With only the used ones, everything after B and the stick was shifted
-    // (C, Z, the shakes, +, HOME and the D-pad did nothing).
+    // (C, Z, the shakes, + and the D-pad did nothing).
     desc.button_mask = (1u << SDL_GAMEPAD_BUTTON_COUNT) - 1;
     desc.axis_mask = (1u << SDL_GAMEPAD_AXIS_COUNT) - 1;
     desc.name = "Recharged touch controls";
@@ -202,9 +201,10 @@ void TouchControls::Layout(float width, float height)
     buttons_[C] = at(0.22f, 0.41f, 0.055f);
     buttons_[Item] = at(0.07f, 0.52f, 0.05f);
     // Away from the top edge, where iOS delays touches for its own gestures.
-    buttons_[Plus] = {width * 0.5f - 0.07f * s, 0.15f * s, 0.045f * s};
-    buttons_[Home] = {width * 0.5f + 0.07f * s, 0.15f * s, 0.045f * s};
-    buttons_[Minus] = {width * 0.5f - 0.19f * s, 0.15f * s, 0.045f * s};
+    // - and + as on the Remote. No HOME: the game is built without its HOME
+    // Menu (MSCHARGED_DIAGNOSTIC_FRONTEND_HOME is off), so HOME does nothing.
+    buttons_[Minus] = {width * 0.5f - 0.07f * s, 0.15f * s, 0.045f * s};
+    buttons_[Plus] = {width * 0.5f + 0.07f * s, 0.15f * s, 0.045f * s};
     // 1 and 2 at the top right, as on a Remote held sideways.
     buttons_[One] = {width - 0.21f * s, 0.15f * s, 0.045f * s};
     buttons_[Two] = {width - 0.09f * s, 0.15f * s, 0.045f * s};
@@ -468,7 +468,7 @@ void TouchControls::Draw(ImDrawList* draw, ImFont* font) const
         }
         draw->AddCircleFilled({b.x, b.y}, b.r, pressed_[n] ? fillPressed : fill);
         draw->AddCircle({b.x, b.y}, b.r, line, 0, thickness);
-        const float size = n == Hit || n == Item ? b.r * 0.55f : n == Home ? b.r * 0.5f : b.r * 0.9f;
+        const float size = n == Hit || n == Item ? b.r * 0.55f : b.r * 0.9f;
         centred(kLabels[n], size, b.x, b.y, text);
     }
     draw->AddCircleFilled({stickX_, stickY_}, stickRadius_, IM_COL32(255, 255, 255, stickActive_ ? 35 : 20));

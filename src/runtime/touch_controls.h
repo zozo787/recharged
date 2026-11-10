@@ -22,17 +22,17 @@ namespace mscharged::runtime {
 // any other (platform/desktop_wpad.cpp) with the default layout of
 // bootstrap/gamepad_actions.h: the stick is the Nunchuk stick, A/B the Remote's
 // A/B, C and Z the Nunchuk buttons, "Tacle" shakes the Remote (hit an
-// opponent), "Objet" shakes the Nunchuk (switch items), +, - and HOME are the
-// Remote's (HOME opens the Wii's HOME Menu, whose Wii Menu leaves the game),
-// 1 and 2 too, and the small pad is the D-pad. A small cross at the top left
-// opens "Quitter le jeu ?": Quitter asks the game window to close, as closing
-// it does on a computer (the game powers off like a Wii; iOS cannot start the
-// app again, so the app closes); Annuler goes back to the game. Created only when a player chose the touch screen
-// (controls.playerN = touch), before the input owner sets up the players.
-// While a physical controller is connected it plays instead and the controls
-// hide (the virtual gamepad stays attached, released). A finger that lands
-// away from the buttons and the stick's corner points the Wii Remote: it is
-// sent to the game as a mouse (the mouse points for player 1 when the touch
+// opponent), "Objet" shakes the Nunchuk (switch items), +, -, 1 and 2 are the
+// Remote's (no HOME: the game is built without its HOME Menu), and the small
+// pad is the D-pad. A small cross at the top left opens "Quitter le jeu ?":
+// Quitter asks the game window to close, as closing it does on a computer (the
+// game powers off like a Wii; iOS cannot start the app again, so the app
+// closes); Annuler goes back to the game. Created only when a player chose the
+// touch screen (controls.playerN = touch), before the input owner sets up the
+// players. While a physical controller is connected it plays instead and the
+// controls hide (the virtual gamepad stays attached, released). A finger that
+// lands away from the buttons and the stick's corner points the Wii Remote: it
+// is sent to the game as a mouse (the mouse points for player 1 when the touch
 // screen plays alone, platform/hardware_owner.cpp); A clicks.
 // Use it on the presentation thread, between frames.
 class TouchControls {
@@ -57,7 +57,7 @@ public:
     void Draw(ImDrawList* draw, ImFont* font) const;
 
     enum Control : int {
-        None = -1, A, B, C, Z, Hit, Item, Plus, Home, Minus, One, Two, Quit, Up, Down, Left, Right, ControlCount
+        None = -1, A, B, C, Z, Hit, Item, Plus, Minus, One, Two, Quit, Up, Down, Left, Right, ControlCount
     };
 
 private:
