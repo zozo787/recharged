@@ -81,6 +81,13 @@ TouchControls::TouchControls()
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
     watching_ = SDL_AddEventWatch(Watch, this);
     Log(watching_ ? "on" : "no event watch: %s", SDL_GetError());
+    // Now, before the game counts its controllers (platform/hardware_owner.cpp):
+    // with none connected at start it turns gamepads off for the whole run
+    // and keyboard & mouse becomes player 1, so a virtual gamepad attached on
+    // the first frame was never read.
+    const std::string physical = PhysicalGamepad(0);
+    if (physical.empty()) Attach();
+    else Log("not attached at start: %s is connected", physical.c_str());
 }
 
 TouchControls::~TouchControls()

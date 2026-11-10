@@ -82,11 +82,19 @@ struct Settings
     bool performance_mode = false;
     // display.antialiasing: off, fxaa, 4x (multisampling of the game's frame),
     // 4x_fxaa or 4x_ssaa (supersampling); see kAntialiasingChoices.
-    std::string antialiasing = "4x";
     // display.resolution: the game's 3D render size. window renders one pixel
     // per window pixel of the picture; native the Wii's 640x448; 2x-4x fixed
     // multiples of it. Viewport and projection stay the game's own.
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // iOS: a phone's screen has far more pixels than its GPU can fill at the
+    // game's pace. The unfolded foldable iPhone (2853x2007) ran at 30 FPS with
+    // window and 4x and at 60 folded (2034x1398); 3x is 1920x1344.
+    std::string antialiasing = "fxaa";
+    std::string resolution = "3x";
+#else
+    std::string antialiasing = "4x";
     std::string resolution = "window";
+#endif
     int master_volume = 100;
     // [audio] <group>_volume: each group of the game's sounds (kSoundGroups
     // order), 0-100 % of the levels the game sets itself.
