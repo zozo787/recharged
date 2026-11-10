@@ -148,11 +148,13 @@ void TouchControls::Attach()
     desc.type = SDL_JOYSTICK_TYPE_GAMEPAD;
     desc.naxes = SDL_GAMEPAD_AXIS_COUNT;
     desc.nbuttons = SDL_GAMEPAD_BUTTON_COUNT;
-    for (const auto& input : kInputs) {
-        if (input.button >= 0) desc.button_mask |= 1u << input.button;
-        if (input.axis >= 0) desc.axis_mask |= 1u << input.axis;
-    }
-    desc.axis_mask |= (1u << SDL_GAMEPAD_AXIS_LEFTX) | (1u << SDL_GAMEPAD_AXIS_LEFTY);
+    // Every button and axis: SDL numbers a virtual gamepad's inputs in the
+    // order of the mask's bits, so with all of them the joystick's button and
+    // axis numbers are the SDL_GamepadButton/SDL_GamepadAxis values set below.
+    // With only the used ones, everything after B and the stick was shifted
+    // (C, Z, the shakes, +, HOME and the D-pad did nothing).
+    desc.button_mask = (1u << SDL_GAMEPAD_BUTTON_COUNT) - 1;
+    desc.axis_mask = (1u << SDL_GAMEPAD_AXIS_COUNT) - 1;
     desc.name = "Recharged touch controls";
     id_ = SDL_AttachVirtualJoystick(&desc);
     if (!id_) {
