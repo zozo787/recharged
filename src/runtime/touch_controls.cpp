@@ -23,7 +23,7 @@ namespace mscharged::runtime {
 namespace {
 // Labels in the overlay font's ASCII. French: the player's language.
 constexpr const char* kLabels[TouchControls::ControlCount] = {
-    "A", "B", "C", "Z", "Tacle", "Objet", "+", "HOME", "-", "1", "2", "^", "v", "<", ">"};
+    "A", "B", "C", "Z", "Tacle", "Objet", "+", "HOME", "-", "1", "2", "Quitter", "^", "v", "<", ">"};
 // Each control's gamepad input (the default layout, bootstrap/gamepad_actions.h).
 struct Input {
     int button = -1; // SDL_GamepadButton, or -1
@@ -41,6 +41,7 @@ constexpr Input kInputs[TouchControls::ControlCount] = {
     {SDL_GAMEPAD_BUTTON_BACK, -1},           // -
     {SDL_GAMEPAD_BUTTON_WEST, -1},           // 1
     {SDL_GAMEPAD_BUTTON_NORTH, -1},          // 2
+    {-1, -1},                                // Quitter: no gamepad input
     {SDL_GAMEPAD_BUTTON_DPAD_UP, -1},
     {SDL_GAMEPAD_BUTTON_DPAD_DOWN, -1},
     {SDL_GAMEPAD_BUTTON_DPAD_LEFT, -1},
@@ -215,6 +216,7 @@ void TouchControls::Layout(float width, float height)
     // 1 and 2 at the top right, as on a Remote held sideways.
     buttons_[One] = {width - 0.21f * s, 0.15f * s, 0.045f * s};
     buttons_[Two] = {width - 0.09f * s, 0.15f * s, 0.045f * s};
+    buttons_[Quit] = {0.07f * s, 0.08f * s, 0.045f * s};
     const float padX = 0.16f * s, padY = 0.24f * s, step = 0.07f * s, padRadius = 0.037f * s;
     buttons_[Up] = {padX, padY - step, padRadius};
     buttons_[Down] = {padX, padY + step, padRadius};
@@ -353,6 +355,27 @@ void TouchControls::Service(float width, float height)
             pressed[n] = true;
             --held_[n];
         }
+    // "Quitter" held for a second: the game window's close request, which the
+    // game takes as the Wii's power button (platform/hardware_owner.cpp).
+    {
+        const std::uint64_t now = SDL_GetTicks();
+        if (!pressed[Quit]) quitSince_ = 0;
+        else if (!quitSince_) quitSince_ = now;
+        const float progress = quitSince_ ? std::min(1.0f, float(now - quitSince_) / 1000.0f) : 0.0f;
+        if (progress != quitProgress_) {
+            quitProgress_ = progress;
+            ++revision_;
+        }
+        if (progress >= 1.0f && !quitSent_ && window) {
+            quitSent_ = true;
+            SDL_Event close{};
+            close.type = SDL_EVENT_WINDOW_CLOSE_REQUESTED;
+            close.window.timestamp = SDL_GetTicksNS();
+            close.window.windowID = window;
+            SDL_PushEvent(&close);
+            Log("Quitter held: asking the game window to close");
+        }
+    }
     if (pointing) {
         pointed_ = true;
         lastPointX_ = pointX;
@@ -437,9 +460,16 @@ void TouchControls::Draw(ImDrawList* draw, ImFont* font) const
         const auto& b = buttons_[n];
         draw->AddCircleFilled({b.x, b.y}, b.r, pressed_[n] ? fillPressed : fill);
         draw->AddCircle({b.x, b.y}, b.r, line, 0, thickness);
-        const float size = n == Hit || n == Item ? b.r * 0.55f : n == Home ? b.r * 0.5f : b.r * 0.9f;
+        const float size = n == Hit || n == Item ? b.r * 0.55f : n == Home ? b.r * 0.5f
+                         : n == Quit ? b.r * 0.38f : b.r * 0.9f;
         const ImVec2 extent = font->CalcTextSizeA(size, FLT_MAX, 0, kLabels[n]);
         draw->AddText(font, size, {b.x - extent.x * 0.5f, b.y - extent.y * 0.5f}, text, kLabels[n]);
+        if (n == Quit && quitProgress_ > 0) {
+            // The hold so far, as a ring filling clockwise from the top.
+            constexpr float top = -1.5707964f, turn = 6.2831855f;
+            draw->PathArcTo({b.x, b.y}, b.r + thickness * 2, top, top + turn * quitProgress_, 32);
+            draw->PathStroke(IM_COL32(255, 90, 80, 230), 0, thickness * 2.5f);
+        }
     }
     draw->AddCircleFilled({stickX_, stickY_}, stickRadius_, IM_COL32(255, 255, 255, stickActive_ ? 35 : 20));
     draw->AddCircle({stickX_, stickY_}, stickRadius_, line, 0, thickness);

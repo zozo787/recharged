@@ -24,7 +24,9 @@ namespace mscharged::runtime {
 // A/B, C and Z the Nunchuk buttons, "Tacle" shakes the Remote (hit an
 // opponent), "Objet" shakes the Nunchuk (switch items), +, - and HOME are the
 // Remote's (HOME opens the Wii's HOME Menu, whose Wii Menu leaves the game),
-// 1 and 2 too, and the small pad is the D-pad. Created only when a player chose the touch screen
+// 1 and 2 too, and the small pad is the D-pad. "Quitter", held for a second,
+// asks the game window to close, as closing it does on a computer: the game
+// powers off like a Wii, then the launcher reopens (reopen_after_game). Created only when a player chose the touch screen
 // (controls.playerN = touch), before the input owner sets up the players.
 // While a physical controller is connected it plays instead and the controls
 // hide (the virtual gamepad stays attached, released). A finger that lands
@@ -54,7 +56,7 @@ public:
     void Draw(ImDrawList* draw, ImFont* font) const;
 
     enum Control : int {
-        None = -1, A, B, C, Z, Hit, Item, Plus, Home, Minus, One, Two, Up, Down, Left, Right, ControlCount
+        None = -1, A, B, C, Z, Hit, Item, Plus, Home, Minus, One, Two, Quit, Up, Down, Left, Right, ControlCount
     };
 
 private:
@@ -112,6 +114,11 @@ private:
     unsigned loggedFingers_ = 0, loggedResizes_ = 0;
     bool loggedService_ = false;
     bool loggedPointer_ = false;
+    // "Quitter": since when it is held (SDL ticks, 0: not held), and whether
+    // the close request went out.
+    std::uint64_t quitSince_ = 0;
+    float quitProgress_ = 0; // 0..1, drawn as a ring
+    bool quitSent_ = false;
     // Frames a tapped button stays pressed.
     std::array<int, ControlCount> held_{};
     // The pointer stays where the finger left it: the game takes the mouse only
