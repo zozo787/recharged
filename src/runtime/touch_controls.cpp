@@ -120,10 +120,6 @@ bool SDLCALL TouchControls::Watch(void* self, SDL_Event* event)
         finger.x = event->tfinger.x;
         finger.y = event->tfinger.y;
         controls.window_ = event->tfinger.windowID;
-        if (event->type == SDL_EVENT_FINGER_DOWN && controls.fingerDowns_++ == 0) {
-            controls.firstX_ = finger.x;
-            controls.firstY_ = finger.y;
-        }
         break;
     }
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: {
@@ -178,11 +174,7 @@ void TouchControls::Attach()
         id_ = 0;
         return;
     }
-    Log("virtual gamepad %u attached (%s gamepad)", unsigned(id_), SDL_IsGamepad(id_) ? "an SDL" : "NOT an SDL");
-    if (char* mapping = SDL_GetGamepadMappingForID(id_)) {
-        Log("mapping %.200s", mapping);
-        SDL_free(mapping);
-    }
+    Log("virtual gamepad %u attached", unsigned(id_));
 }
 
 void TouchControls::Detach()
@@ -259,11 +251,8 @@ void TouchControls::Service(float width, float height)
         Log("drawing on a %.0fx%.0f surface", width, height);
     }
     {
-        // What reached the controls since the last frame, for the log.
+        // Window size changes (folding the foldable iPhone), for the log.
         std::lock_guard lock(mutex_);
-        if (fingerDowns_ && !loggedFingers_)
-            Log("first touch at %.2f, %.2f of the window", firstX_, firstY_);
-        loggedFingers_ = fingerDowns_;
         const auto now = std::chrono::steady_clock::now();
         if (resizes_ != loggedResizes_ && now - lastResizeLog_ >= std::chrono::seconds(2)) {
             Log("game window resized %u times so far, now %dx%d pixels", resizes_, windowW_, windowH_);
@@ -418,16 +407,6 @@ void TouchControls::Service(float width, float height)
         lastPointY_ = pointY;
     }
 
-    for (int n = 0; n < ControlCount; ++n)
-        if (pressed[n] && !loggedPress_[n]) {
-            loggedPress_[n] = true;
-            Log("first press of %s (virtual gamepad %s)", kLabels[n], joystick_ ? "attached" : "MISSING");
-        }
-    if (stickActive && !stickActive_) {
-        static bool logged = false;
-        if (!logged) Log("first use of the stick");
-        logged = true;
-    }
     if (pressed != pressed_ || stickActive != stickActive_ || knobX != knobX_ || knobY != knobY_
         || stickX != stickX_ || stickY != stickY_)
         ++revision_;
@@ -451,26 +430,10 @@ void TouchControls::Service(float width, float height)
             motion.motion.x = pointX * float(w);
             motion.motion.y = pointY * float(h);
             SDL_PushEvent(&motion);
-            if (!loggedPointer_) {
-                loggedPointer_ = true;
-                Log("first pointing at %.0f, %.0f of a %dx%d window", motion.motion.x, motion.motion.y, w, h);
-            }
         }
     }
 
     if (!joystick_) return;
-    // For the log: what SDL reports for a control that was already pressed on
-    // the previous frame (its state has gone through SDL since).
-    for (int n = 0; n < ControlCount; ++n)
-        if (pressed_[n] && sentBefore_[n] && !loggedSeen_[n] && kInputs[n].button >= 0) {
-            loggedSeen_[n] = true;
-            SDL_Gamepad* gamepad = SDL_GetGamepadFromID(id_);
-            Log("%s held: SDL joystick button %d = %d, gamepad button = %d (%s)", kLabels[n], kInputs[n].button,
-                int(SDL_GetJoystickButton(joystick_, kInputs[n].button)),
-                gamepad ? int(SDL_GetGamepadButton(gamepad, SDL_GamepadButton(kInputs[n].button))) : -1,
-                gamepad ? "opened by the game" : "NOT opened as a gamepad");
-        }
-    sentBefore_ = pressed_;
     for (int n = 0; n < ControlCount; ++n) {
         if (kInputs[n].button >= 0) SDL_SetJoystickVirtualButton(joystick_, kInputs[n].button, pressed_[n]);
         if (kInputs[n].axis >= 0)

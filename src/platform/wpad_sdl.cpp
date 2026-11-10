@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdio>
 #include <cstring>
 #include <deque>
 #include <mutex>
@@ -40,7 +39,6 @@ struct SpeakerRequest {
 struct Channel {
     SDL_Gamepad* pad = nullptr;
     SDL_JoystickID id = 0;
-    u16 logged_buttons = 0; // buttons already reported in the log (first press each)
     u32 format = WPAD_FMT_CORE_BTN;
     WPADConnectCallback* connect = nullptr;
     WPADExtensionCallback* extension = nullptr;
@@ -296,12 +294,6 @@ bool SDLCALL Watch(void*, SDL_Event* event) {
                 }
         }
         CopyNunchukObservation(channel, report);
-        // For the session log: each button's first report to the game.
-        if (const u16 fresh = report.button & ~channel.logged_buttons) {
-            channel.logged_buttons |= fresh;
-            std::fprintf(stderr, "WPAD channel %d: first report with buttons 0x%04x (new 0x%04x)\n",
-                int(&channel - state.channels.data()), unsigned(report.button), unsigned(fresh));
-        }
         // Retail WPADiExcludeButton removes opposite right/down bits.
         if ((report.button & (WPAD_BUTTON_LEFT | WPAD_BUTTON_RIGHT)) ==
                 (WPAD_BUTTON_LEFT | WPAD_BUTTON_RIGHT)) report.button &= ~WPAD_BUTTON_RIGHT;

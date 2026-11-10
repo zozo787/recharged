@@ -109,12 +109,10 @@ private:
 
     // Diagnostics for the session log (docs/IOS_PORT.md): what the controls
     // see on the device. Counters guarded by mutex_.
-    unsigned fingerDowns_ = 0, resizes_ = 0;
-    float firstX_ = 0, firstY_ = 0;
+    unsigned resizes_ = 0;
     int windowW_ = 0, windowH_ = 0;
-    unsigned loggedFingers_ = 0, loggedResizes_ = 0;
+    unsigned loggedResizes_ = 0;
     bool loggedService_ = false;
-    bool loggedPointer_ = false;
     // The cross and its confirmation window, in surface pixels.
     struct Rect {
         float x0 = 0, y0 = 0, x1 = 0, y1 = 0;
@@ -130,8 +128,6 @@ private:
     // for 3 s after its last motion, then the touch gamepad's centred pointer.
     bool pointed_ = false;
     float lastPointX_ = 0, lastPointY_ = 0; // window-normalized
-    std::array<bool, ControlCount> loggedPress_{};
-    std::array<bool, ControlCount> sentBefore_{}, loggedSeen_{};
     std::chrono::steady_clock::time_point lastResizeLog_{};
 };
 

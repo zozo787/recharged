@@ -53,11 +53,15 @@ def generate(root, build, cc, make, tclsh, *, check=False, discard_generated=Fal
                        f"TOP={source}", f"B.cc={cc}", f"B.tclsh={tclsh}",
                        f"TCLSH_CMD={tclsh}", "CFLAGS=", "sqlite3.c", "sqlite3.h"]
             # The generator's tools run on this machine: Apple's clang would build
-            # them for iOS (and they could not run) if a cross build's deployment
-            # target or SDK reached it through the environment.
+            # them for iOS (and they could not run) if an iOS-family deployment
+            # target or SDK reached it through the environment. macOS's own
+            # MACOSX_DEPLOYMENT_TARGET and SDKROOT stay as they are.
+            foreign_sdk = ("iphoneos", "iphonesimulator", "appletv", "watch", "xros", "xrsimulator")
             environment = {k: v for k, v in os.environ.items()
-                           if k not in ("MAKEFLAGS", "MFLAGS", "GNUMAKEFLAGS", "SDKROOT")
-                           and not k.endswith("_DEPLOYMENT_TARGET")}
+                           if k not in ("MAKEFLAGS", "MFLAGS", "GNUMAKEFLAGS",
+                                        "IPHONEOS_DEPLOYMENT_TARGET", "TVOS_DEPLOYMENT_TARGET",
+                                        "WATCHOS_DEPLOYMENT_TARGET", "XROS_DEPLOYMENT_TARGET")
+                           and not (k == "SDKROOT" and any(name in v.lower() for name in foreign_sdk))}
             with log.open("w") as output:
                 result = subprocess.run(command, cwd=work, env=environment,
                                         stdout=output, stderr=subprocess.STDOUT)

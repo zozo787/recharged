@@ -11,7 +11,6 @@
 #include <bitset>
 #include <chrono>
 #include <cmath>
-#include <cstdio>
 #include <cstdint>
 #include <cstdlib>
 #include <map>
@@ -41,7 +40,6 @@ struct Device {
     SDL_JoystickID input_id{}, virtual_id{};
     SDL_Gamepad* input{};
     SDL_Joystick* virtual_joystick{};
-    std::bitset<11> logged_buttons; // Wii buttons already reported in the log
     std::thread::id owner;
     bool sensors_enabled{};
     Clock::time_point next_report{};
@@ -692,13 +690,6 @@ void ServiceDesktopWpad() {
                                             mscharged::platform::GamepadFamilyOf(SDL_GetGamepadType(input))),
                                         false, true};
                 if (state.settings.gamepad_players) AttachGamepadPlayer(state, **slot, index);
-                // For the session log: who took which slot, and what presses + and HOME.
-                const char* pad_name = SDL_GetGamepadName(input);
-                std::fprintf(stderr, "Gamepad slot %d: %s (SDL type %d), Wii channel %d; + is %s, HOME is %s\n",
-                    index + 1, pad_name ? pad_name : "controller", int(SDL_GetGamepadType(input)),
-                    state.settings.gamepad_players ? state.settings.gamepad_channels[index] : -1,
-                    mscharged::platform::FormatGamepadBinding((*slot)->profile.bindings[mscharged::GamepadActionPlus]).c_str(),
-                    mscharged::platform::FormatGamepadBinding((*slot)->profile.bindings[mscharged::GamepadActionHome]).c_str());
             }
             catch (...) {
                 if (*slot) Retire(*slot);
@@ -798,14 +789,6 @@ void ServiceDesktopWpad() {
         // WPAD order: A, B, 1, 2, +, -, HOME, up, down, left, right.
         if (focused) for (std::size_t n = 0; n < buttons.size(); ++n)
             buttons[n] = PadHeld(*pad, mscharged::GamepadActionA + n);
-        // Each Wii button's first press, for the session log.
-        for (std::size_t n = 0; n < buttons.size(); ++n)
-            if (buttons[n] && !pad->logged_buttons[n]) {
-                pad->logged_buttons[n] = true;
-                static constexpr const char* names[11]{"A", "B", "1", "2", "+", "-", "HOME", "up", "down", "left", "right"};
-                std::fprintf(stderr, "Gamepad %s: first press of Wii button %s\n",
-                    SDL_GetGamepadName(pad->input) ? SDL_GetGamepadName(pad->input) : "controller", names[n]);
-            }
         if (!state.settings.gamepad_players) { Report(*pad, buttons, now); continue; }
         auto nunchuk = GamepadNunchuk(*pad, focused);
         UpdateGamepadShakes(*pad, focused);
