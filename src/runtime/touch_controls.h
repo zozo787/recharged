@@ -9,6 +9,8 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 struct ImDrawList;
 struct ImFont;
@@ -75,6 +77,11 @@ private:
 
     mutable std::mutex mutex_;
     std::unordered_map<SDL_FingerID, Finger> fingers_; // guarded by mutex_
+    // Fingers that went down and up between two frames (iOS delivers touches
+    // that start near a screen edge late, often down and up at once), in
+    // window-normalized coordinates; guarded by mutex_. Service presses the
+    // button under each for a few frames, so the game sees it.
+    std::vector<std::pair<float, float>> taps_;
     // SDL_HINT_TOUCH_MOUSE_EVENTS before this, restored afterwards.
     std::string previousHint_;
     bool hadHint_ = false;
@@ -105,6 +112,12 @@ private:
     unsigned loggedFingers_ = 0, loggedResizes_ = 0;
     bool loggedService_ = false;
     bool loggedPointer_ = false;
+    // Frames a tapped button stays pressed.
+    std::array<int, ControlCount> held_{};
+    // The pointer stays where the finger left it: the game takes the mouse only
+    // for 3 s after its last motion, then the touch gamepad's centred pointer.
+    bool pointed_ = false;
+    float lastPointX_ = 0, lastPointY_ = 0; // window-normalized
     std::array<bool, ControlCount> loggedPress_{};
     std::chrono::steady_clock::time_point lastResizeLog_{};
 };

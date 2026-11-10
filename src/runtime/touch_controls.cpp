@@ -132,7 +132,13 @@ bool SDLCALL TouchControls::Watch(void* self, SDL_Event* event)
     case SDL_EVENT_FINGER_UP:
     case SDL_EVENT_FINGER_CANCELED: {
         std::lock_guard lock(controls.mutex_);
-        controls.fingers_.erase(event->tfinger.fingerID);
+        const auto finger = controls.fingers_.find(event->tfinger.fingerID);
+        if (finger != controls.fingers_.end()) {
+            // Never seen by Service: a tap between two frames.
+            if (!finger->second.assigned && event->type == SDL_EVENT_FINGER_UP)
+                controls.taps_.emplace_back(finger->second.x, finger->second.y);
+            controls.fingers_.erase(finger);
+        }
         break;
     }
     default: break;
@@ -195,9 +201,10 @@ void TouchControls::Layout(float width, float height)
     buttons_[Z] = at(0.37f, 0.29f, 0.06f);
     buttons_[C] = at(0.22f, 0.41f, 0.055f);
     buttons_[Item] = at(0.07f, 0.52f, 0.05f);
-    buttons_[Plus] = {width * 0.5f - 0.06f * s, 0.07f * s, 0.04f * s};
-    buttons_[Home] = {width * 0.5f + 0.06f * s, 0.07f * s, 0.04f * s};
-    const float padX = 0.15f * s, padY = 0.17f * s, step = 0.065f * s, padRadius = 0.035f * s;
+    // Away from the top edge, where iOS delays touches for its own gestures.
+    buttons_[Plus] = {width * 0.5f - 0.07f * s, 0.15f * s, 0.045f * s};
+    buttons_[Home] = {width * 0.5f + 0.07f * s, 0.15f * s, 0.045f * s};
+    const float padX = 0.16f * s, padY = 0.24f * s, step = 0.07f * s, padRadius = 0.037f * s;
     buttons_[Up] = {padX, padY - step, padRadius};
     buttons_[Down] = {padX, padY + step, padRadius};
     buttons_[Left] = {padX - step, padY, padRadius};
@@ -285,6 +292,10 @@ void TouchControls::Service(float width, float height)
     {
         std::lock_guard lock(mutex_);
         window = window_;
+        // Taps between frames press their button for a few frames.
+        for (const auto& [tapX, tapY] : taps_)
+            if (const int control = ButtonAt(tapX * width, tapY * height); control != None) held_[control] = 3;
+        taps_.clear();
         bool pointerTaken = false;
         for (const auto& [id, finger] : fingers_) stickActive |= finger.stick, pointerTaken |= finger.pointer;
         for (auto& [id, finger] : fingers_) {
@@ -326,6 +337,16 @@ void TouchControls::Service(float width, float height)
         stickX = knobX = stickBase_.x;
         stickY = knobY = stickBase_.y;
     }
+    for (int n = 0; n < ControlCount; ++n)
+        if (held_[n] > 0) {
+            pressed[n] = true;
+            --held_[n];
+        }
+    if (pointing) {
+        pointed_ = true;
+        lastPointX_ = pointX;
+        lastPointY_ = pointY;
+    }
 
     for (int n = 0; n < ControlCount; ++n)
         if (pressed[n] && !loggedPress_[n]) {
@@ -344,9 +365,12 @@ void TouchControls::Service(float width, float height)
     stickActive_ = stickActive;
     stickX_ = stickX, stickY_ = stickY, knobX_ = knobX, knobY_ = knobY;
 
-    // The pointing finger as a mouse, every frame while it is down: the game
-    // keeps a mouse pointer for 3 s after its last motion.
-    if (pointing && window) {
+    // The pointing finger as a mouse, every frame (also after it lifts, at the
+    // last place it pointed): the game keeps a mouse pointer only for 3 s
+    // after its last motion, then the touch gamepad's centred one.
+    if (pointed_ && window) {
+        pointX = lastPointX_;
+        pointY = lastPointY_;
         int w = 0, h = 0;
         if (SDL_Window* target = SDL_GetWindowFromID(window); target && SDL_GetWindowSize(target, &w, &h)) {
             SDL_Event motion{};
