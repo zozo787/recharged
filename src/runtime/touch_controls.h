@@ -119,6 +119,7 @@ private:
     bool pointed_ = false;
     float lastPointX_ = 0, lastPointY_ = 0; // window-normalized
     std::array<bool, ControlCount> loggedPress_{};
+    std::array<bool, ControlCount> sentBefore_{}, loggedSeen_{};
     std::chrono::steady_clock::time_point lastResizeLog_{};
 };
 

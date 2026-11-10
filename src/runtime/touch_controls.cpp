@@ -175,6 +175,10 @@ void TouchControls::Attach()
         return;
     }
     Log("virtual gamepad %u attached (%s gamepad)", unsigned(id_), SDL_IsGamepad(id_) ? "an SDL" : "NOT an SDL");
+    if (char* mapping = SDL_GetGamepadMappingForID(id_)) {
+        Log("mapping %.200s", mapping);
+        SDL_free(mapping);
+    }
 }
 
 void TouchControls::Detach()
@@ -275,7 +279,7 @@ void TouchControls::Service(float width, float height)
         if (joystick_) {
             for (int n = 0; n < ControlCount; ++n) {
                 if (kInputs[n].button >= 0) SDL_SetJoystickVirtualButton(joystick_, kInputs[n].button, false);
-                if (kInputs[n].axis >= 0) SDL_SetJoystickVirtualAxis(joystick_, kInputs[n].axis, 0);
+                if (kInputs[n].axis >= 0) SDL_SetJoystickVirtualAxis(joystick_, kInputs[n].axis, SDL_JOYSTICK_AXIS_MIN);
             }
             SDL_SetJoystickVirtualAxis(joystick_, SDL_GAMEPAD_AXIS_LEFTX, 0);
             SDL_SetJoystickVirtualAxis(joystick_, SDL_GAMEPAD_AXIS_LEFTY, 0);
@@ -389,10 +393,24 @@ void TouchControls::Service(float width, float height)
     }
 
     if (!joystick_) return;
+    // For the log: what SDL reports for a control that was already pressed on
+    // the previous frame (its state has gone through SDL since).
+    for (int n = 0; n < ControlCount; ++n)
+        if (pressed_[n] && sentBefore_[n] && !loggedSeen_[n] && kInputs[n].button >= 0) {
+            loggedSeen_[n] = true;
+            SDL_Gamepad* gamepad = SDL_GetGamepadFromID(id_);
+            Log("%s held: SDL joystick button %d = %d, gamepad button = %d (%s)", kLabels[n], kInputs[n].button,
+                int(SDL_GetJoystickButton(joystick_, kInputs[n].button)),
+                gamepad ? int(SDL_GetGamepadButton(gamepad, SDL_GamepadButton(kInputs[n].button))) : -1,
+                gamepad ? "opened by the game" : "NOT opened as a gamepad");
+        }
+    sentBefore_ = pressed_;
     for (int n = 0; n < ControlCount; ++n) {
         if (kInputs[n].button >= 0) SDL_SetJoystickVirtualButton(joystick_, kInputs[n].button, pressed_[n]);
         if (kInputs[n].axis >= 0)
-            SDL_SetJoystickVirtualAxis(joystick_, kInputs[n].axis, pressed_[n] ? SDL_JOYSTICK_AXIS_MAX : 0);
+            // A trigger rests at the axis minimum: 0 would be half pressed.
+            SDL_SetJoystickVirtualAxis(joystick_, kInputs[n].axis,
+                                       pressed_[n] ? SDL_JOYSTICK_AXIS_MAX : SDL_JOYSTICK_AXIS_MIN);
     }
     const auto axis = [&](float offset) {
         const float value = std::clamp(offset / stickRadius_, -1.0f, 1.0f);
