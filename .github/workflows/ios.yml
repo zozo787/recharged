@@ -14,9 +14,8 @@ on:
   workflow_dispatch:
     inputs:
       runner:
-        description: macOS runner (both cross-compile for iOS devices)
-        type: choice
-        options: [macos-15-intel, macos-15, macos-26]
+        description: macOS runner label (macos-15-intel, macos-15, macos-26, or a newer image)
+        type: string
         default: macos-15-intel
       xcode:
         description: Xcode to build with (a version such as 26.3, or newest on the runner)
@@ -32,8 +31,9 @@ permissions:
 
 # A new push waits for the running build instead of cancelling it: a cold build
 # takes hours, and its compiler cache is what makes the next one quick.
+# Per runner, so a build on another image can run beside the usual one.
 concurrency:
-  group: ios-${{ github.workflow }}-${{ github.ref }}
+  group: ios-${{ github.workflow }}-${{ github.ref }}-${{ inputs.runner || 'default' }}
   cancel-in-progress: false
 
 jobs:
