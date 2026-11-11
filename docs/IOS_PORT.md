@@ -95,7 +95,7 @@ essayé), **À faire**, **Abandonné**.
 | N1 | Linux, Steam Deck, Windows et macOS compilent avec les changements du portage | Validé : macOS à `2289565` (après le dernier changement partagé) ; Linux, Steam Deck, Windows à `86f05e3` (plus ancien, à refaire avant une pull request) |
 | N2 | `ctest --preset debug` passe | À faire (exigé pour une pull request) |
 | N3 | Mémoire suffisante sur les modèles à 3 Go (iPhone XR, SE 2) | À tester |
-| N4 | Notices de licence des crates Rust dans l'app | À faire (`package_ios.py` ne copie que `Cargo.lock`) |
+| N4 | Notices de licence des crates Rust dans l'app | Fait (`LICENSES/rust/<crate>-<version>`, comme les paquets de bureau) |
 | N5 | Build CI d'environ 10 min avec les caches | Validé (7 à 10 min ; ~30 min à froid) |
 
 ### 3.3 Abandonné ou hors périmètre
@@ -144,7 +144,11 @@ essayé), **À faire**, **Abandonné**.
   `recharged-<version>-ios-arm64.ipa` (zip de `Payload/`), sans signature :
   programme, `Info.plist` (depuis `cmake/Info-iOS.plist.in`), icônes
   `AppIcon*`, `assets/`, modules de jeu dans `Frameworks/`, clés DT* du SDK,
-  notices. Vérifie l'architecture et la plateforme des binaires ; option
+  notices : celles des dépendances préparées (`LICENSES/dependencies`), et
+  celles de chaque crate Rust du graphe de `nod-ffi` pour la cible iOS
+  (`LICENSES/rust/<crate>-<version>`, lues dans le cache de Cargo par les
+  fonctions `cargo_packages` et `cached_crate` de `package_build.py`). Le
+  contrôle de la CI affiche le nombre de crates couvertes. Vérifie l'architecture et la plateforme des binaires ; option
   `--regions`.
 - **Info.plist** : iPhone et iPad, paysage, `UIRequiresFullScreen`, écran de
   lancement vide (résolution native), barre d'état masquée,
@@ -432,7 +436,6 @@ gestion de l'appareil.
 - Essais sur iPad (zone sûre, contrôles) et sur d'autres iPhone (F16), dont
   un modèle à 3 Go (N3).
 - Confort : vibration à l'appui.
-- Notices de licence Rust (N4).
 - Retour au launcher sans fermer l'app (difficile, § 3.3).
 - Pull request éventuelle (§ 9).
 
@@ -493,3 +496,4 @@ renommés au format du projet le même jour).
 | L16 | 11-11 | Import d'image par le sélecteur d'iOS (copie dans `Documents/game`) : en place, copie en arrière-plan, boucle d'iOS pendant le sélecteur, attente de sa présentation | `625bac3` `4715a66` `d4704f4` `da79c7f` | Appareil : import complet | Terminé |
 | L17 | 11-11 | Liens vers Fichiers au format d'iOS (`shareddocuments:///var/mobile/…/`, « / » final) pour les sous-dossiers. Dossier principal de l'app : lien de dossier avec ou sans « / » final (`dd04a78`) sans effet, navigateur de documents d'iOS (`ffcd6b5`, `86413bf`) rouvert sur son dernier dossier, liste dans le launcher (`5a61338`) qui n'y emmène pas ; retenu : lien vers `recharged.ini` (`ce35205`), qui ouvre le fichier de réglages | `cd181e6` `3bc3a9a` `93d6cbb` `ffcd6b5` `86413bf` `5a61338` `dd04a78` `ce35205` | Appareil : `game`, `logs`, `texture_packs` s'ouvrent ; `recharged.ini` s'ouvre, le dossier principal non (limite d'iOS acceptée) | Terminé |
 | L18 | 11-11 | Documentation publique : historique réécrit sans détails personnels, « iPhone Duo » dans les commentaires, document refondu en cahier des charges | `23770ca` `44b1cd4` `baec666` | — | Terminé |
+| L19 | 11-11 | Notices de licence de chaque crate Rust dans l'app (exigence N4), comme les paquets de bureau ; nombre de crates couvertes affiché au contrôle de la CI | + notices Rust | CI à confirmer | En cours |

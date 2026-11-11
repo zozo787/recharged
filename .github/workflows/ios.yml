@@ -225,6 +225,8 @@ jobs:
           for module in "$app"/Frameworks/recharged_game_*; do
             echo "$module: $(nm -u "$module" | wc -l) undefined symbols"
           done
+          # Each Rust crate's license texts (tools/package_ios.py, rust_notices).
+          echo "Rust license notices: $(ls "$app/LICENSES/rust" | grep -vc '^Cargo.lock$') crates"
           du -sh "$app" build/ios-artifacts/*.ipa
       - name: Upload the .ipa
         uses: actions/upload-artifact@v7

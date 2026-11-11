@@ -10,7 +10,8 @@ Layout of Recharged.app (SDL_GetBasePath is the app folder itself):
   Frameworks/recharged_game_{us,eu,jp,kr}.so   the game modules (one per game version;
                                                  --regions keeps only those built)
   assets/...                                     what the desktop packages put beside the program
-  LICENSE, LICENSES/...                          this port's and the dependencies' notices
+  LICENSE, LICENSES/...                          this port's and the dependencies' notices,
+                                                 with each Rust crate's in LICENSES/rust
 """
 
 import argparse
@@ -21,10 +22,12 @@ import stat
 import subprocess
 import sys
 import tempfile
+import tomllib
 import zipfile
 from pathlib import Path
 
-from package_build import (ASSETS, DEPENDENCIES, MODULES, PackageError, notice_paths, regular_file)
+from package_build import (ASSETS, DEPENDENCIES, MODULES, PackageError, cache_values, cached_crate, cargo_packages,
+                           notice_paths, regular_file)
 from pipeline_catalog import CatalogError, catalog_rows, verify_database
 
 APP = "Recharged.app"
@@ -151,6 +154,7 @@ def package_ios(build, output, source, regions=REGIONS):
             for path in notice_paths(root / "source"):
                 copy(root / "source", path, Path("LICENSES/dependencies") / dependency / path)
         copy(build / "prepared/nod/source", "Cargo.lock", "LICENSES/rust/Cargo.lock")
+        rust_notices(build, app)
 
         stray = [path for path in app.rglob("*") if GAME_DATA.search(path.name)]
         if stray:
@@ -170,6 +174,32 @@ def package_ios(build, output, source, regions=REGIONS):
         shutil.rmtree(output / APP, ignore_errors=True)
         shutil.copytree(app, output / APP, symlinks=True)
     return destination
+
+
+def rust_notices(build, app):
+    """Each Rust crate's own license texts in LICENSES/rust/<crate>-<version>,
+    as the desktop packages have them (package_build.py): the crates the build
+    resolved for nod-ffi on its target, read from the Cargo cache it used.
+    nod and nod-ffi themselves are covered by LICENSES/dependencies/nod."""
+    packages, _ = cargo_packages(build, cache_values(build))
+    lock = tomllib.loads(regular_file(build / "prepared/nod/source", "Cargo.lock").read_text())
+    locked = {(p["name"], p["version"], p.get("source")): p for p in lock["package"]}
+    for package in packages:
+        if not package.get("source"):
+            continue
+        key = (package["name"], package["version"], package["source"])
+        checksum = locked.get(key, {}).get("checksum")
+        if not checksum:
+            raise PackageError(f"Rust package without a locked checksum: {key[:2]}")
+        _, notices = cached_crate(Path(package["crate_path"]), key[0], key[1], checksum)
+        if not notices:
+            raise PackageError(f"No cached Rust license texts: {key[:2]}")
+        destination = app / "LICENSES/rust" / f"{key[0]}-{key[1]}"
+        for path, data in notices.items():
+            target = destination / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+            target.chmod(0o644)
 
 
 def main():
