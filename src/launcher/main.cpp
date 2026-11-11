@@ -16,6 +16,9 @@
 #endif
 #include "launcher/disc_search.h"
 #include "launcher/image_library.h"
+#if defined(MSCHARGED_PLATFORM_IOS)
+#include "launcher/ios_document_picker.h"
+#endif
 #include "launcher/issue_reporters.h"
 #include "launcher/match_presets.h"
 #include "launcher/player_lineup.h"
@@ -399,6 +402,9 @@ std::string FileUrl(const fs::path& path)
 #ifdef _WIN32
     std::replace(generic.begin(), generic.end(), '\\', '/');
     std::string url = "file:///";
+#elif defined(MSCHARGED_PLATFORM_IOS)
+    // A folder of the app opens in the Files app (file:// URLs open nothing).
+    std::string url = "shareddocuments://";
 #else
     std::string url = "file://";
 #endif
@@ -2631,9 +2637,17 @@ private:
             std::lock_guard<std::mutex> lock(dialog_->mutex);
             dialog_->active = true;
         }
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS: its own picker (any file); the image is copied into the game folder.
+        (void)start;
+        (void)filters;
+        ShowImportFileDialog(DiscChosen, new std::shared_ptr<DialogResult>(dialog_), window_,
+                             PathUtf8(GameFolder().path));
+#else
         const std::string location = start.empty() ? std::string() : PathUtf8(start);
         SDL_ShowOpenFileDialog(DiscChosen, new std::shared_ptr<DialogResult>(dialog_), window_, filters,
                                int(std::size(filters)), location.empty() ? nullptr : location.c_str(), false);
+#endif
     }
 
     void PollResults()
@@ -2687,7 +2701,14 @@ private:
             {
                 dialog_->ready = false;
                 if (!dialog_->error.empty()) Notice(dialog_->error, NoticeKind::Error);
-                else if (!dialog_->path.empty()) SelectDisc(dialog_->path);
+                else if (!dialog_->path.empty())
+                {
+                    SelectDisc(dialog_->path);
+#if defined(MSCHARGED_PLATFORM_IOS)
+                    // The copy is in the game folder now: list it there.
+                    StartLibraryScan();
+#endif
+                }
             }
         }
         {
@@ -3774,7 +3795,12 @@ private:
         if (ImGui::InputTextWithHint("##save_folder", ("Default: " + default_folder).c_str(), &draft_.save_folder))
             dirty_ = true;
         ImGui::SameLine(0, Dp(10));
-        if (SecondaryButton("browse_saves", "Browse...", {Dp(118), ImGui::GetFrameHeight()}, !browsing && config_ok_,
+#if defined(MSCHARGED_PLATFORM_IOS)
+        const char* browse_saves = "Show";
+#else
+        const char* browse_saves = "Browse...";
+#endif
+        if (SecondaryButton("browse_saves", browse_saves, {Dp(118), ImGui::GetFrameHeight()}, !browsing && config_ok_,
                             Icon::Folder))
             BrowseFolder(FolderPurpose::SaveFolder);
         ImGui::SameLine(0, Dp(10));
@@ -3803,6 +3829,7 @@ private:
             if (!fs::exists(folder) && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
                 ImGui::SetTooltip("Created when you first play.");
 
+#if !defined(MSCHARGED_PLATFORM_IOS) // no Dolphin on iOS to import from
             const auto found = mscharged::platform::FindDolphinSaves(Release().title_id);
             const std::string description = found.empty()
                 ? "Copies a save from the Dolphin emulator. Choose Dolphin's user folder or the game's save folder in it."
@@ -3818,6 +3845,7 @@ private:
             if (SecondaryButton("import_choose", found.empty() ? "Choose folder..." : "Choose another folder...",
                                 {width, Dp(40)}, !browsing && config_ok_, Icon::Folder))
                 BrowseFolder(FolderPurpose::DolphinSave);
+#endif
             EndRows();
         }
         EndCard();
@@ -3872,6 +3900,7 @@ private:
         }
         EndCard();
 
+#if !defined(MSCHARGED_PLATFORM_IOS) // no Dolphin on iOS to import from
         BeginCard("##dolphin_miis", "Import from Dolphin",
                   "Your own Miis, if you play on Dolphin. They replace the Miis above.", Icon::Copy);
         bool browsing;
@@ -3896,6 +3925,7 @@ private:
             EndRows();
         }
         EndCard();
+#endif
     }
 
     // A Mii of the list: its figure on its favourite colour (the launcher
@@ -4605,6 +4635,17 @@ private:
     // that exists); the system's choice when empty.
     void BrowseFolder(FolderPurpose purpose, const fs::path& start = {})
     {
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS has no folder dialog, and the app could not keep using a folder
+        // elsewhere: its folders are in the Files app, which this opens.
+        fs::path folder = start.empty() ? GameFolder().path : start;
+        if (purpose == FolderPurpose::SaveFolder) folder = ResolveSaveFolder(draft_, file_.path, base_);
+        std::error_code made;
+        fs::create_directories(folder, made);
+        if (OpenPath(folder))
+            Notice("Put your files in this folder with the Files app, then come back to Recharged.", NoticeKind::Info);
+        return;
+#endif
         {
             std::lock_guard<std::mutex> lock(folder_dialog_->mutex);
             folder_dialog_->active = true;
@@ -4913,7 +4954,11 @@ private:
         const bool can_select = !browsing && config_ok_;
 
         // Controls on the right, from the edge inwards.
+#if defined(MSCHARGED_PLATFORM_IOS)
+        const char* change = "Open in Files";
+#else
         const char* change = "Change...";
+#endif
         const char* subfolders = "Subfolders";
         const float change_w = TextSize(fonts.body, change).x + Dp(32);
         const float change_x = max.x - Dp(12) - change_w;
@@ -7853,9 +7898,17 @@ private:
         const fs::path current = draft_.gamecube_disc.empty() ? fs::path()
                                                               : ResolveGameCubeDiscPath(draft_, file_.path);
         const fs::path start = !current.empty() ? current.parent_path() : ResolveGameFolder(draft_, file_.path);
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS: its own picker (any file); the image is copied into the game folder.
+        (void)start;
+        (void)filters;
+        ShowImportFileDialog(DiscChosen, new std::shared_ptr<DialogResult>(gamecube_dialog_), window_,
+                             PathUtf8(ResolveGameFolder(draft_, file_.path)));
+#else
         const std::string location = PathUtf8(start);
         SDL_ShowOpenFileDialog(DiscChosen, new std::shared_ptr<DialogResult>(gamecube_dialog_), window_, filters,
                                int(std::size(filters)), location.empty() ? nullptr : location.c_str(), false);
+#endif
     }
 
     void GameCubeDiscChosen(const fs::path& path)
@@ -8259,7 +8312,11 @@ private:
         { std::lock_guard<std::mutex> lock(folder_dialog_->mutex); browsing = folder_dialog_->active; }
         const bool can_select = !browsing && config_ok_ && draft_.texture_packs;
 
+#if defined(MSCHARGED_PLATFORM_IOS)
+        const char* change = "Open in Files";
+#else
         const char* change = "Change...";
+#endif
         const char* open = "Open";
         const float change_w = TextSize(fonts.body, change).x + Dp(32);
         const float open_w = GhostWidth(open, Icon::Folder);
