@@ -61,7 +61,7 @@ essayé), **À faire**, **Abandonné**.
 | F3 | Plein écran natif sur chaque format d'écran (pas de cadre de compatibilité), paysage | Validé (iPhone Duo) |
 | F4 | Réglages, données, sauvegardes et journaux dans `Documents`, visible dans Fichiers | Validé |
 | F5 | Importer une image disque depuis n'importe où (sélecteur d'iOS) | Validé |
-| F6 | Les boutons de dossier ouvrent le bon dossier dans Fichiers | Fait (forme du lien corrigée, à vérifier) |
+| F6 | Les boutons de dossier ouvrent le bon dossier dans Fichiers | À vérifier (dossier de `recharged.ini` resté sur l'ancien dossier avec `/private/var`) |
 | F7 | Launcher utilisable au doigt (défilement avec inertie) | Validé |
 | F8 | Launcher dans la zone sûre de l'écran | Validé (iPhone Duo) ; iPad à relever |
 | F9 | Réglages sans effet sur iOS masqués dans le launcher | Validé |
@@ -166,7 +166,7 @@ essayé), **À faire**, **Abandonné**.
 - **Dossiers** : pas de choix de dossier sur iOS ; « Change… » devient « Open
   in Files », « Browse… » (sauvegardes) devient « Show » : ils ouvrent le
   dossier dans Fichiers. `FileUrl` donne sur iOS
-  `shareddocuments:///private/var/…/` (chemin normalisé, « / » final pour un
+  `shareddocuments:///var/mobile/…/` (chemin normalisé sans `/private`, « / » final pour un
   dossier) ; chaque lien ouvert va dans le journal (« Open in Files: … »).
   Import Dolphin masqué.
 - Une réinstallation de l'app peut vider Documents (réglages et image à
@@ -316,8 +316,12 @@ apparentées).
 - **Choix ignoré** → pendant sa présentation, `presentingViewController` est
   encore nul : ne conclure à une fermeture qu'après la fin de la
   présentation (ou 10 s sans apparition).
-- **Fichiers reste sur l'ancien dossier** → lien sans « / » final : forme
-  `/private/var/…/` (à confirmer).
+- **Fichiers reste sur l'ancien dossier** (au moins pour Documents, le dossier
+  de `recharged.ini`) → le lien doit avoir la forme que donne iOS pour
+  Documents : `/var/mobile/…/`, sans le `/private` de `$HOME`, avec « / »
+  final. Avec `/private/var/…/` (`27602a2`), échec constaté ; forme
+  `/var/mobile` à confirmer. Chaque lien ouvert est dans le journal
+  (« Open in Files: … »).
 - **« Nintendo Wii Remote » dans le journal sans rien de connecté** → normal :
   Wiimote virtuelle créée par `desktop_wpad.cpp` pour chaque manette qui
   joue ; virtuelle, elle ne masque pas les contrôles tactiles.

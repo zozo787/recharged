@@ -400,12 +400,13 @@ std::string FileUrl(const fs::path& path)
 {
     std::string generic = PathUtf8(fs::absolute(path));
 #if defined(MSCHARGED_PLATFORM_IOS)
-    // The Files app takes a folder the way iOS spells its URL: the full
-    // /private/var path, ending with a slash (without it, the app's own
-    // folder did not open; Files stayed where it was).
+    // The Files app finds a folder by the path iOS gives for it
+    // (NSFileManager's Documents URL): /var/mobile/..., without the
+    // /private that $HOME carries, and ending with a slash. With /private,
+    // Files stayed on the folder it showed before.
     generic = PathUtf8(fs::absolute(path).lexically_normal());
     if (generic.size() > 1 && generic.back() == '/') generic.pop_back();
-    if (generic.rfind("/var/", 0) == 0) generic = "/private" + generic;
+    if (generic.rfind("/private/var/", 0) == 0) generic.erase(0, std::string("/private").size());
     if (std::error_code error; fs::is_directory(path, error)) generic += '/';
 #endif
 #ifdef _WIN32
