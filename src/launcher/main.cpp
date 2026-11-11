@@ -399,6 +399,15 @@ constexpr const char* kSaveFile = "Strikers2";
 std::string FileUrl(const fs::path& path)
 {
     std::string generic = PathUtf8(fs::absolute(path));
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // The Files app takes a folder the way iOS spells its URL: the full
+    // /private/var path, ending with a slash (without it, the app's own
+    // folder did not open; Files stayed where it was).
+    generic = PathUtf8(fs::absolute(path).lexically_normal());
+    if (generic.size() > 1 && generic.back() == '/') generic.pop_back();
+    if (generic.rfind("/var/", 0) == 0) generic = "/private" + generic;
+    if (std::error_code error; fs::is_directory(path, error)) generic += '/';
+#endif
 #ifdef _WIN32
     std::replace(generic.begin(), generic.end(), '\\', '/');
     std::string url = "file:///";
@@ -2847,6 +2856,9 @@ private:
 
     bool OpenPath(const fs::path& path)
     {
+#if defined(MSCHARGED_PLATFORM_IOS)
+        platform::SessionLogLine("Open in Files: " + FileUrl(path));
+#endif
         if (!SDL_OpenURL(FileUrl(path).c_str()))
         {
             Notice(std::string("Cannot open the folder: ") + SDL_GetError(), NoticeKind::Error);
