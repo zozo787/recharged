@@ -39,6 +39,13 @@ techniques (pas de données personnelles, pas de citations d'échanges).
   `chore` ou `revert`, et le domaine `ios` (par exemple
   `fix(ios): ... (#163)`). Tous les commits de `ios-port` suivent ce format
   depuis le renommage du 2026-11-11 (sauf la fusion de `stable`).
+  Un changement = **un seul commit** `feat(ios)` / `fix(ios)` avec le code
+  et sa documentation (conception, pièges, suivi décrit sans son propre
+  identifiant), au message qui décrit le changement. Le résultat d'un essai
+  sur l'appareil, et l'identifiant du commit dans le suivi, vont ensuite dans
+  un commit `docs(ios)`. Un commit qui ne touche que la documentation porte
+  `[skip ci]` dans son texte : aucun workflow ne se lance, même après un
+  push forcé.
 - **Autres plateformes intactes** : le code propre à iOS est derrière
   `MSCHARGED_PLATFORM_IOS` (C++) ou `MSCHARGED_IOS` (CMake) ; ce qui est
   propre à macOS garde `__APPLE__ && !MSCHARGED_PLATFORM_IOS`. Les fichiers
