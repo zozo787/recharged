@@ -72,20 +72,20 @@ essayé), **À faire**, **Abandonné**.
 |---|---|---|
 | F1 | App universelle iPhone + iPad, arm64, Metal, iOS 18.0 minimum | Validé |
 | F2 | La CI produit un `.ipa` non signé à chaque push sur `ios-port` | Validé |
-| F3 | Plein écran natif sur chaque format d'écran (pas de cadre de compatibilité), paysage | Validé (iPhone Duo) |
+| F3 | Plein écran natif sur chaque format d'écran (pas de cadre de compatibilité), paysage | Validé (iPhone Duo, iPad Pro M5) |
 | F4 | Réglages, données, sauvegardes et journaux dans `Documents`, visible dans Fichiers | Validé |
 | F5 | Importer une image disque depuis n'importe où (sélecteur d'iOS) | Validé |
 | F6 | Les boutons de dossier ouvrent le bon dossier dans Fichiers | Validé pour `game`, `logs`, `texture_packs` ; dossier de `recharged.ini` : ouvre `recharged.ini` (limite d'iOS acceptée, § 5) |
 | F7 | Launcher utilisable au doigt (défilement avec inertie) | Validé |
-| F8 | Launcher dans la zone sûre de l'écran | Validé (iPhone Duo) ; iPad à relever |
+| F8 | Launcher dans la zone sûre de l'écran | Validé (iPhone Duo ; iPad Pro M5 à l'œil, marges non relevées) |
 | F9 | Réglages sans effet sur iOS masqués dans le launcher | Validé |
-| F10 | Contrôles tactiles couvrant tous les boutons utiles de la Wiimote et du Nunchuk | Validé |
+| F10 | Contrôles tactiles couvrant tous les boutons utiles de la Wiimote et du Nunchuk | Validé (iPhone Duo, iPad Pro M5) |
 | F11 | Pointeur de la Wiimote au doigt | Validé |
 | F12 | Disposition des contrôles réglable avant la partie (position, taille, opacité, retour au défaut) | Validé |
-| F13 | Manette Bluetooth (MFi, DualSense, Xbox…) ; elle remplace les contrôles tactiles quand elle se connecte | Validé (DualSense) |
+| F13 | Manette Bluetooth (MFi, DualSense, Xbox…) ; elle remplace les contrôles tactiles quand elle se connecte | Validé (DualSense, iPhone Duo et iPad Pro M5) |
 | F14 | Quitter le jeu depuis l'écran tactile, avec confirmation | Validé (ferme l'app, § 5) |
 | F15 | Jeu fluide (60 FPS) sur l'appareil de test | Validé (120 FPS possible) |
-| F16 | Fonctionne sur les autres iPhone et iPad sous iOS 18+ | À tester (iPad : premier essai bon) |
+| F16 | Fonctionne sur les autres iPhone et iPad sous iOS 18+ | iPad Pro M5 validé ; autres iPhone à tester |
 | F17 | Disque GameCube de l'option Super Team importable | Fait (même sélecteur que F5) |
 
 ### 3.2 Non fonctionnelles
@@ -421,7 +421,9 @@ gestion de l'appareil.
   En paysage : plié, fenêtre 678×466 sans marge ; déplié, fenêtre 951×669
   (2853×2007 pixels), zone sûre 951×635 (**34 points en bas**, barre
   d'accueil).
-- **iPad Pro M5** : premier essai sans problème notable ; zone sûre à relever.
+- **iPad Pro M5** : validé : affichage aux bonnes dimensions, choix du jeu,
+  contrôles tactiles, DualSense (les contrôles tactiles disparaissent quand
+  elle joue). Marges de la zone sûre non relevées (journal, ligne « Screen »).
 - Manette **DualSense** : reconnue, le jeu répond.
 
 ## 8. Reste à faire
