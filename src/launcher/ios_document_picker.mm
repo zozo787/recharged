@@ -11,8 +11,7 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 // The picker's delegate, kept alive while the picker is shown (the picker
-// itself only holds it weakly) and until the copy is done. Browsing (a folder
-// shown, nothing to import) has no callback.
+// itself only holds it weakly) and until the copy is done.
 @interface RechargedImportDelegate : NSObject <UIDocumentPickerDelegate, UIAdaptivePresentationControllerDelegate>
 @property(nonatomic, assign) SDL_DialogFileCallback callback;
 @property(nonatomic, assign) void* userdata;
@@ -20,7 +19,6 @@
 @property(nonatomic, assign) BOOL answered;
 @property(nonatomic, assign) BOOL open;      // the picker is on screen, or on its way
 @property(nonatomic, assign) BOOL presented; // its presentation has finished
-@property(nonatomic, assign) BOOL browse;    // only shows a folder
 @end
 
 static RechargedImportDelegate* g_shown = nil;
@@ -38,11 +36,7 @@ void Finish(RechargedImportDelegate* delegate, NSString* path, NSString* error)
 {
     if (delegate.answered) return;
     delegate.answered = YES;
-    if (!delegate.callback)
-    {
-        Log(error ? error : @"closed");
-    }
-    else if (error)
+    if (error)
     {
         Log(error);
         SDL_SetError("%s", error.UTF8String);
@@ -145,7 +139,7 @@ NSString* Import(NSURL* picked, NSString* folder, NSString** error)
     self.open = NO;
     NSURL* picked = urls.firstObject;
     Log(picked ? [@"picked " stringByAppendingString:picked.path] : @"picked nothing");
-    if (!picked || self.browse) // browsing: a file touched only closes it
+    if (!picked)
     {
         Finish(self, nil, nil);
         return;
@@ -253,30 +247,4 @@ void ShowImportFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_W
     Show(picker, delegate, window);
 }
 
-void ShowFolderBrowser(SDL_Window* window, const std::string& folder)
-{
-    if (g_shown) return;
-    // Every item, so the folder shows all it holds; it opens on `folder`.
-    UIDocumentPickerViewController* picker =
-        [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeItem] asCopy:NO];
-    // The folder as iOS names it: under the URL NSFileManager gives for
-    // Documents (/var/mobile/...), not $HOME's /private/var/... spelling,
-    // which the picker ignored (it reopened where it was last used).
-    NSString* path = [NSString stringWithUTF8String:folder.c_str()].stringByStandardizingPath;
-    NSURL* documents = [NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory
-                                                            inDomains:NSUserDomainMask].firstObject;
-    NSString* home = documents.path.stringByStandardizingPath;
-    NSURL* url = [NSURL fileURLWithPath:path isDirectory:YES];
-    if (documents && [path hasPrefix:home])
-    {
-        url = documents;
-        for (NSString* part in [[path substringFromIndex:home.length] pathComponents])
-            if (![part isEqualToString:@"/"]) url = [url URLByAppendingPathComponent:part isDirectory:YES];
-    }
-    picker.directoryURL = url;
-    RechargedImportDelegate* delegate = [RechargedImportDelegate new];
-    delegate.browse = YES;
-    Log([@"browsing " stringByAppendingString:picker.directoryURL.absoluteString]);
-    Show(picker, delegate, window);
-}
 } // namespace mscharged::launcher
