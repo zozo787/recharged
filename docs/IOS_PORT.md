@@ -342,9 +342,16 @@ apparentées).
   départ (`directoryURL`), même donné par l'URL exacte de `NSFileManager`,
   et se rouvre là où il a servi la dernière fois ; une liste du dossier dans
   le launcher n'y emmène pas ; le lien sans « / » final ne fait pas mieux
-  (`dd04a78`). Aucun moyen trouvé d'y emmener : piste restante, remplacer ce
-  bouton sur iOS par l'indication « Fichiers : Sur mon iPhone → Recharged »
-  (pas encore décidé).
+  (`dd04a78`). Recherche : `shareddocuments://` n'est pas documenté par
+  Apple ; un ingénieur Apple (forums développeurs, fil 751391, 2024) indique
+  qu'aucun schéma d'URL documenté n'ouvre ou ne révèle un dossier dans
+  Fichiers sur iOS (l'équivalent de `NSWorkspace.activateFileViewerSelecting`
+  manque) ; un bug ouvert depuis iOS 14.6 (FB9359784) signale que le schéma
+  marche mal pour « Sur mon iPhone » ; `UIDocumentBrowserViewController`
+  ne révèle un document que s'il est la vue racine de l'app. Pistes
+  restantes : un lien vers `recharged.ini` (Fichiers s'ouvre sur le fichier,
+  à vérifier si son dossier est derrière), ou vers un sous-dossier (le
+  dossier Recharged à un retour en arrière), ou l'indication du chemin.
 - **« Nintendo Wii Remote » dans le journal sans rien de connecté** → normal :
   Wiimote virtuelle créée par `desktop_wpad.cpp` pour chaque manette qui
   joue ; virtuelle, elle ne masque pas les contrôles tactiles.
