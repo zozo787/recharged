@@ -11,7 +11,8 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 // The picker's delegate, kept alive while the picker is shown (the picker
-// itself only holds it weakly) and until the copy is done.
+// itself only holds it weakly) and until the copy is done. Browsing (a folder
+// shown, nothing to import) has no callback.
 @interface RechargedImportDelegate : NSObject <UIDocumentPickerDelegate, UIAdaptivePresentationControllerDelegate>
 @property(nonatomic, assign) SDL_DialogFileCallback callback;
 @property(nonatomic, assign) void* userdata;
@@ -19,6 +20,7 @@
 @property(nonatomic, assign) BOOL answered;
 @property(nonatomic, assign) BOOL open;      // the picker is on screen, or on its way
 @property(nonatomic, assign) BOOL presented; // its presentation has finished
+@property(nonatomic, assign) BOOL browse;    // only shows a folder
 @end
 
 static RechargedImportDelegate* g_shown = nil;
@@ -36,7 +38,11 @@ void Finish(RechargedImportDelegate* delegate, NSString* path, NSString* error)
 {
     if (delegate.answered) return;
     delegate.answered = YES;
-    if (error)
+    if (!delegate.callback)
+    {
+        Log(error ? error : @"closed");
+    }
+    else if (error)
     {
         Log(error);
         SDL_SetError("%s", error.UTF8String);
@@ -139,7 +145,7 @@ NSString* Import(NSURL* picked, NSString* folder, NSString** error)
     self.open = NO;
     NSURL* picked = urls.firstObject;
     Log(picked ? [@"picked " stringByAppendingString:picked.path] : @"picked nothing");
-    if (!picked)
+    if (!picked || self.browse) // browsing: a file touched only closes it
     {
         Finish(self, nil, nil);
         return;
@@ -171,42 +177,25 @@ NSString* Import(NSURL* picked, NSString* folder, NSString** error)
 }
 @end
 
-namespace mscharged::launcher
+namespace
 {
-void ShowImportFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window,
-                          const std::string& destination)
+// Shows `picker` over `window` and runs iOS's run loop until it closes.
+void Show(UIDocumentPickerViewController* picker, RechargedImportDelegate* delegate, SDL_Window* window)
 {
-    if (g_shown)
-    {
-        SDL_SetError("A file picker is already open");
-        callback(userdata, nullptr, -1);
-        return;
-    }
     auto* uiwindow = (__bridge UIWindow*)SDL_GetPointerProperty(SDL_GetWindowProperties(window),
                                                                 SDL_PROP_WINDOW_UIKIT_WINDOW_POINTER, nullptr);
     UIViewController* over = uiwindow.rootViewController;
     while (over.presentedViewController) over = over.presentedViewController;
     if (!over)
     {
-        Log(@"no view controller to show it over");
-        SDL_SetError("Cannot show the file picker: no window to show it over");
-        callback(userdata, nullptr, -1);
+        Finish(delegate, nil, @"Cannot show the file picker: no window to show it over");
         return;
     }
-    // Any file: iOS does not know .rvz or .wbfs, and the launcher checks what
-    // the file holds. Opened in place (not "as a copy"): this app copies it.
-    UIDocumentPickerViewController* picker =
-        [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeData] asCopy:NO];
     picker.allowsMultipleSelection = NO;
     picker.shouldShowFileExtensions = YES;
-    RechargedImportDelegate* delegate = [RechargedImportDelegate new];
-    delegate.callback = callback;
-    delegate.userdata = userdata;
-    delegate.destination = [NSString stringWithUTF8String:destination.c_str()];
     picker.delegate = delegate;
     g_shown = delegate;
-    Log([NSString stringWithFormat:@"showing it over %@ (window %@)", NSStringFromClass(over.class),
-                                   uiwindow ? @"found" : @"missing"]);
+    Log([NSString stringWithFormat:@"showing it over %@", NSStringFromClass(over.class)]);
     delegate.open = YES;
     [over presentViewController:picker animated:YES completion:^{
         delegate.presented = YES;
@@ -239,5 +228,41 @@ void ShowImportFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_W
             Finish(delegate, nil, nil);
         }
     }
+}
+} // namespace
+
+namespace mscharged::launcher
+{
+void ShowImportFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window,
+                          const std::string& destination)
+{
+    if (g_shown)
+    {
+        SDL_SetError("A file picker is already open");
+        callback(userdata, nullptr, -1);
+        return;
+    }
+    // Any file: iOS does not know .rvz or .wbfs, and the launcher checks what
+    // the file holds. Opened in place (not "as a copy"): this app copies it.
+    UIDocumentPickerViewController* picker =
+        [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeData] asCopy:NO];
+    RechargedImportDelegate* delegate = [RechargedImportDelegate new];
+    delegate.callback = callback;
+    delegate.userdata = userdata;
+    delegate.destination = [NSString stringWithUTF8String:destination.c_str()];
+    Show(picker, delegate, window);
+}
+
+void ShowFolderBrowser(SDL_Window* window, const std::string& folder)
+{
+    if (g_shown) return;
+    // Every item, so the folder shows all it holds; it opens on `folder`.
+    UIDocumentPickerViewController* picker =
+        [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeItem] asCopy:NO];
+    picker.directoryURL = [NSURL fileURLWithPath:[NSString stringWithUTF8String:folder.c_str()] isDirectory:YES];
+    RechargedImportDelegate* delegate = [RechargedImportDelegate new];
+    delegate.browse = YES;
+    Log([@"browsing " stringByAppendingString:picker.directoryURL.path]);
+    Show(picker, delegate, window);
 }
 } // namespace mscharged::launcher

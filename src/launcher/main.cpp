@@ -2860,11 +2860,14 @@ private:
 #if defined(MSCHARGED_PLATFORM_IOS)
         // The Files app opens the app's folders from a link, except its top
         // folder (Documents, "Recharged" in Files): it stayed on whatever it
-        // showed before. A link to a file there, the settings file, opens it.
-        fs::path target = path;
-        if (std::error_code error; fs::equivalent(path, UserFolder(base_), error) && fs::exists(file_.path, error))
-            target = file_.path;
-        const std::string url = FileUrl(target);
+        // showed before, and a link to a file there opened the file. That
+        // folder is shown in iOS's file browser, over the launcher.
+        if (std::error_code error; fs::equivalent(path, UserFolder(base_), error))
+        {
+            ShowFolderBrowser(window_, PathUtf8(path));
+            return true;
+        }
+        const std::string url = FileUrl(path);
         platform::SessionLogLine("Open in Files: " + url);
         if (!SDL_OpenURL(url.c_str()))
 #else

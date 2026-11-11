@@ -24,4 +24,8 @@ namespace mscharged::launcher
 // goes to the session log ("File picker: ...").
 void ShowImportFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window,
                           const std::string& destination);
+// Shows `folder` in the same picker, to look at what it holds (the Files app
+// does not open the app's top folder from a link). A file touched there only
+// closes it. Returns once it has closed; on the main thread.
+void ShowFolderBrowser(SDL_Window* window, const std::string& folder);
 } // namespace mscharged::launcher
