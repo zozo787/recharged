@@ -185,7 +185,8 @@ essayé), **À faire**, **Abandonné**.
   Pour Documents lui-même (dossier de `recharged.ini`, « Open folder » de la
   page Advanced), `OpenPath` montre le dossier dans le navigateur de fichiers
   d'iOS, par-dessus le launcher (`ShowFolderBrowser`, même sélecteur que
-  l'import, `UTTypeItem`, `directoryURL` sur le dossier) : Fichiers n'ouvre
+  l'import, `UTTypeItem`, `directoryURL` sur le dossier, construit à partir
+  de l'URL de Documents que donne `NSFileManager`) : Fichiers n'ouvre
   pas le dossier principal de l'app par un lien. Toucher un fichier le ferme
   seulement.
   Import Dolphin masqué.
@@ -341,7 +342,10 @@ apparentées).
   `shareddocuments:///var/mobile/…/dossier/`, mais pas le dossier principal
   de l'app, quelle que soit la forme du lien (`/private/var` ou `/var`), et
   un lien vers un fichier qui s'y trouve ouvre ce fichier : montrer ce
-  dossier dans le navigateur de fichiers d'iOS, dans l'app.
+  dossier dans le navigateur de fichiers d'iOS, dans l'app. Son dossier de
+  départ (`directoryURL`) n'est qu'une indication : avec le chemin
+  `/private/var/…` de `$HOME`, il s'est rouvert là où l'import l'avait
+  laissé ; il reçoit l'URL de Documents de `NSFileManager` (à confirmer).
 - **« Nintendo Wii Remote » dans le journal sans rien de connecté** → normal :
   Wiimote virtuelle créée par `desktop_wpad.cpp` pour chaque manette qui
   joue ; virtuelle, elle ne masque pas les contrôles tactiles.
@@ -478,5 +482,5 @@ renommés au format du projet le même jour).
 | L14 | 11-10 | Opacité des contrôles ; launcher dans la zone sûre ; zone sûre dans le journal | `9d61642` | Appareil ; marges de l'iPhone Duo relevées | Terminé |
 | L15 | 11-10 | Revue : formes partagées entre tactile et disposition | `7978672` | CI | Terminé |
 | L16 | 11-11 | Import d'image par le sélecteur d'iOS (copie dans `Documents/game`) : en place, copie en arrière-plan, boucle d'iOS pendant le sélecteur, attente de sa présentation | `625bac3` `4715a66` `d4704f4` `da79c7f` | Appareil : import complet | Terminé |
-| L17 | 11-11 | Liens vers Fichiers au format d'iOS (`shareddocuments:///var/mobile/…/`, « / » final) pour les sous-dossiers ; le dossier principal de l'app ne s'ouvre pas par un lien (et un lien vers `recharged.ini`, `93d6cbb`, ouvre le fichier) : il est montré dans le navigateur de fichiers d'iOS | `cd181e6` `3bc3a9a` `93d6cbb` + navigateur du dossier principal | Appareil : `game`, `logs`, `texture_packs` s'ouvrent ; dossier des réglages à vérifier | En cours |
+| L17 | 11-11 | Liens vers Fichiers au format d'iOS (`shareddocuments:///var/mobile/…/`, « / » final) pour les sous-dossiers ; le dossier principal de l'app ne s'ouvre pas par un lien (et un lien vers `recharged.ini`, `93d6cbb`, ouvre le fichier) : il est montré dans le navigateur de fichiers d'iOS (`ffcd6b5`, rouvert sur le dernier dossier de l'import), dont le dossier de départ suit maintenant l'URL de Documents de `NSFileManager` | `cd181e6` `3bc3a9a` `93d6cbb` `ffcd6b5` + dossier de départ | Appareil : `game`, `logs`, `texture_packs` s'ouvrent ; dossier des réglages à vérifier | En cours |
 | L18 | 11-11 | Documentation publique : historique réécrit sans détails personnels, « iPhone Duo » dans les commentaires, document refondu en cahier des charges | `23770ca` `44b1cd4` `baec666` | — | Terminé |

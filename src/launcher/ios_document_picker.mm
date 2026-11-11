@@ -259,10 +259,24 @@ void ShowFolderBrowser(SDL_Window* window, const std::string& folder)
     // Every item, so the folder shows all it holds; it opens on `folder`.
     UIDocumentPickerViewController* picker =
         [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeItem] asCopy:NO];
-    picker.directoryURL = [NSURL fileURLWithPath:[NSString stringWithUTF8String:folder.c_str()] isDirectory:YES];
+    // The folder as iOS names it: under the URL NSFileManager gives for
+    // Documents (/var/mobile/...), not $HOME's /private/var/... spelling,
+    // which the picker ignored (it reopened where it was last used).
+    NSString* path = [NSString stringWithUTF8String:folder.c_str()].stringByStandardizingPath;
+    NSURL* documents = [NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory
+                                                            inDomains:NSUserDomainMask].firstObject;
+    NSString* home = documents.path.stringByStandardizingPath;
+    NSURL* url = [NSURL fileURLWithPath:path isDirectory:YES];
+    if (documents && [path hasPrefix:home])
+    {
+        url = documents;
+        for (NSString* part in [[path substringFromIndex:home.length] pathComponents])
+            if (![part isEqualToString:@"/"]) url = [url URLByAppendingPathComponent:part isDirectory:YES];
+    }
+    picker.directoryURL = url;
     RechargedImportDelegate* delegate = [RechargedImportDelegate new];
     delegate.browse = YES;
-    Log([@"browsing " stringByAppendingString:picker.directoryURL.path]);
+    Log([@"browsing " stringByAppendingString:picker.directoryURL.absoluteString]);
     Show(picker, delegate, window);
 }
 } // namespace mscharged::launcher
