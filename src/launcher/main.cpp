@@ -2858,12 +2858,14 @@ private:
     bool OpenPath(const fs::path& path)
     {
 #if defined(MSCHARGED_PLATFORM_IOS)
-        // The Files app opens the app's subfolders from a link ending with a
-        // slash, but stayed where it was for its top folder (Documents,
-        // "Recharged" in Files): that one is tried without the final slash.
-        std::string url = FileUrl(path);
-        if (std::error_code error; fs::equivalent(path, UserFolder(base_), error) && url.size() > 1 && url.back() == '/')
-            url.pop_back();
+        // The Files app opens the app's subfolders from a link, but stays
+        // where it was for its top folder (Documents, "Recharged" in Files),
+        // whatever the link's form; no documented way exists. A link to the
+        // settings file there opens Files on that file, in that folder.
+        fs::path target = path;
+        if (std::error_code error; fs::equivalent(path, UserFolder(base_), error) && fs::exists(file_.path, error))
+            target = file_.path;
+        const std::string url = FileUrl(target);
         platform::SessionLogLine("Open in Files: " + url);
         if (!SDL_OpenURL(url.c_str()))
 #else
