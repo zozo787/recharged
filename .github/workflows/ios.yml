@@ -42,7 +42,7 @@ jobs:
   ios:
     name: ios-arm64
     # xcode-27: GitHub's Xcode 27 image (public preview, arm64, macOS 27). Its
-    # iOS 27 SDK is needed for the foldable iPhone: an app built with an older
+    # iOS 27 SDK is needed for the iPhone Duo: an app built with an older
     # SDK runs there in a 16:9 compatibility frame. Older images, e.g. when
     # Apple Silicon runners are scarce: macos-15-intel (Xcode 26.3) by hand,
     # or the repository variable IOS_RUNNER.
@@ -90,7 +90,7 @@ jobs:
           uname -m
           # The newest Xcode on the image by default: its iOS SDK must know the
           # newest devices, or iOS runs the app in a compatibility frame (the
-          # foldable iPhone, docs/IOS_PORT.md). A version can be asked for.
+          # iPhone Duo, docs/IOS_PORT.md). A version can be asked for.
           ls -d /Applications/Xcode*.app
           if [ "$XCODE" = newest ]; then
             xcode=$(ls -d /Applications/Xcode_[0-9]*.app | grep -v -i beta | sort -V | tail -1)

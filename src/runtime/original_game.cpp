@@ -339,7 +339,7 @@ int mscharged::RunOriginalGame(int argc, char** argv,
 #if defined(MSCHARGED_PLATFORM_IOS)
         // iOS: the window is the whole screen and follows its rotation; SDL's
         // fullscreen mode would pin it to the display mode read at start (on
-        // the foldable iPhone, a portrait size on a landscape screen). It is
+        // the iPhone Duo, a portrait size on a landscape screen). It is
         // made borderless below, which also hides the status bar.
         launch.settings.fullscreen=false;
         launch.settings.fullscreen_resolution="desktop";

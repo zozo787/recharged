@@ -87,7 +87,7 @@ struct Settings
     // multiples of it. Viewport and projection stay the game's own.
 #if defined(MSCHARGED_PLATFORM_IOS)
     // iOS: 4x multisampling of a phone's many pixels outruns its GPU. The
-    // unfolded foldable iPhone (2853x2007) ran at 30 FPS with window and 4x,
+    // unfolded iPhone Duo (2853x2007) ran at 30 FPS with window and 4x,
     // and at full speed with window and no antialiasing (tested on device).
     std::string antialiasing = "off";
     std::string resolution = "window";

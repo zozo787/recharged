@@ -528,8 +528,8 @@ public:
 #if defined(MSCHARGED_PLATFORM_IOS)
         // iOS: a window is always the whole screen and follows its rotation;
         // borderless hides the status bar. Not SDL_WINDOW_FULLSCREEN: it pins
-        // the window to the display mode read at start, and the foldable
-        // iPhone, unfolded, drew a portrait-sized picture on a landscape screen.
+        // the window to the display mode read at start, and the iPhone Duo,
+        // unfolded, drew a portrait-sized picture on a landscape screen.
         constexpr SDL_WindowFlags kPlatformWindow = SDL_WINDOW_BORDERLESS;
 #else
         constexpr SDL_WindowFlags kPlatformWindow = 0;
@@ -656,7 +656,7 @@ public:
                 if (event.type == SDL_EVENT_DISPLAY_ADDED || event.type == SDL_EVENT_DISPLAY_REMOVED)
                     RefreshDisplays();
 #if defined(MSCHARGED_PLATFORM_IOS)
-                // Screen sizes and rotations in the log (foldable iPhone, docs/IOS_PORT.md).
+                // Screen sizes and rotations in the log (iPhone Duo, docs/IOS_PORT.md).
                 if (event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED
                     || event.type == SDL_EVENT_DISPLAY_ORIENTATION)
                 {

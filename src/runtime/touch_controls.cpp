@@ -242,7 +242,7 @@ void TouchControls::Service(float width, float height)
         Log("drawing on a %.0fx%.0f surface", width, height);
     }
     {
-        // Window size changes (folding the foldable iPhone), for the log.
+        // Window size changes (folding the iPhone Duo), for the log.
         std::lock_guard lock(mutex_);
         const auto now = std::chrono::steady_clock::now();
         if (resizes_ != loggedResizes_ && now - lastResizeLog_ >= std::chrono::seconds(2)) {
