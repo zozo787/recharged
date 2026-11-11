@@ -52,7 +52,7 @@ techniques (pas de données personnelles, pas de citations d'échanges).
   `MSCHARGED_PLATFORM_IOS` (C++) ou `MSCHARGED_IOS` (CMake) ; ce qui est
   propre à macOS garde `__APPLE__ && !MSCHARGED_PLATFORM_IOS`. Les fichiers
   propres à iOS ne sont compilés que pour iOS. Après un changement de code
-  partagé, vérifier macOS (§ 6.2).
+  partagé, vérifier les autres plateformes (§ 6.2).
 - **Projet d'origine** (`previouslevelgames/recharged`) : `main` reçoit le
   développement et les pull requests, `stable` les versions. Son
   `CONTRIBUTING.md` demande une issue d'abord pour les gros changements, une
@@ -126,7 +126,7 @@ essayé), **À faire**, **Abandonné**.
 - **Rust (nod)** : la cible de déploiement est passée à Cargo seul
   (`corrosion_set_env_vars`), jamais à tout l'environnement (§ 5).
 - **Workflow `.github/workflows/ios.yml`** : sur push et pull request vers
-  `ios-port` (sauf `docs/**`, `**.md` et `macos-check.yml`), et à la main.
+  `ios-port` (sauf `docs/**` et `**.md`), et à la main.
   Runner par défaut **`xcode-27`** (Xcode 27.2, SDK iOS 27.2, macOS 27 arm64,
   préversion GitHub) ; entrées `runner`, `xcode` (`newest` par défaut),
   `regions` (`eu` par défaut ; `us`, `jp`, `kr`, `all`), et variables de dépôt
@@ -134,9 +134,9 @@ essayé), **À faire**, **Abandonné**.
   le build en cours. Caches : ccache (C, C++, Objective-C/C++), sources
   préparées et SQLite, Cargo. Refuse les données de jeu ; publie l'`.ipa` en
   artefact (14 jours).
-- **Workflow `.github/workflows/macos-check.yml`** : compile le programme
-  macOS et le module EU sur `macos-15-intel` (Xcode 26.3, celui des
-  releases). Se lance quand ce fichier change sur `ios-port` (§ 6.2).
+- **Autres plateformes** : `build.yml` du projet d'origine (Linux, Steam
+  Deck, Windows, macOS), lancé à la main sur `ios-port` (§ 6.2). Le contrôle
+  macOS dédié (`macos-check.yml`) a été retiré le 2026-11-11.
 
 ### 4.2 Paquet
 
@@ -361,8 +361,15 @@ apparentées).
   Wiimote virtuelle créée par `desktop_wpad.cpp` pour chaque manette qui
   joue ; virtuelle, elle ne masque pas les contrôles tactiles.
 - **Joueurs en ligne indisponibles** → libcurl absent sur iOS.
-- **« Run workflow » absent** pour `macos-check.yml` → GitHub ne l'affiche que
-  pour les workflows de la branche par défaut (`stable`).
+- **« Run workflow » absent** pour un workflow propre à `ios-port` → GitHub ne
+  l'affiche que pour les workflows de la branche par défaut (`stable`).
+- **Envoi de l'`.ipa` en échec** (« Unexpected token '<', "<!DOCTYPE "… is
+  not valid JSON ») → panne du service d'artefacts de GitHub, qui renvoie une
+  page d'erreur : relancer le run plus tard.
+- **Run bloqué « en cours »** alors que toutes ses étapes sont finies (envoi
+  de l'artefact en échec) → GitHub refuse de l'annuler ou de le supprimer ;
+  il se clôt seul. Pendant ce temps, un nouveau build iOS attend derrière lui
+  (même file, sans annulation).
 
 ## 6. Procédures
 
@@ -384,13 +391,13 @@ python3 tools/package_ios.py --regions eu
 
 L'`.ipa` arrive dans `build/ios-artifacts/`.
 
-### 6.2 Vérifier macOS
+### 6.2 Vérifier les autres plateformes
 
-Modifier `.github/workflows/macos-check.yml` sur `ios-port` (son commentaire
-note le dernier changement vérifié) et pousser : le contrôle se lance, le
-build iOS non. Environ 20 min avec le cache, 1 h à froid. Avant une pull
-request : relancer aussi `build.yml` (Linux, Steam Deck, Windows, macOS) et
-`ctest --preset debug`.
+Onglet Actions → **Build binaries** (`build.yml`, présent sur `stable`, donc
+avec « Run workflow ») → branche `ios-port`. Il compile Linux, Steam Deck,
+Windows et macOS ; ses jobs macOS demandent des runners Apple Silicon,
+parfois indisponibles. Avant une pull request : aussi `ctest --preset
+debug`.
 
 ### 6.3 Installer
 

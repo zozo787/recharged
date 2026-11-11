@@ -4,14 +4,13 @@ name: iOS build
 # the ios-release preset, packaged as an unsigned .ipa. Signing happens when it
 # is installed. No game data: the disc image is read on the device at run time.
 on:
-  # Not for documentation, nor for the macOS check's file (changed to start
-  # that check, .github/workflows/macos-check.yml).
+  # Documentation alone does not rebuild the app.
   push:
     branches: [ios-port]
-    paths-ignore: ['docs/**', '**.md', '.github/workflows/macos-check.yml']
+    paths-ignore: ['docs/**', '**.md']
   pull_request:
     branches: [ios-port]
-    paths-ignore: ['docs/**', '**.md', '.github/workflows/macos-check.yml']
+    paths-ignore: ['docs/**', '**.md']
   workflow_dispatch:
     inputs:
       runner:
