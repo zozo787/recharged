@@ -2858,17 +2858,12 @@ private:
     bool OpenPath(const fs::path& path)
     {
 #if defined(MSCHARGED_PLATFORM_IOS)
-        // The Files app opens the app's folders from a link, except its top
-        // folder (Documents, "Recharged" in Files): it stayed on whatever it
-        // showed before, a link to a file there opened the file, and iOS's
-        // document browser reopened where it was last used. That folder is
-        // listed in the launcher instead (DrawFolderView).
-        if (std::error_code error; fs::equivalent(path, UserFolder(base_), error))
-        {
-            ShowFolder(path);
-            return true;
-        }
-        const std::string url = FileUrl(path);
+        // The Files app opens the app's subfolders from a link ending with a
+        // slash, but stayed where it was for its top folder (Documents,
+        // "Recharged" in Files): that one is tried without the final slash.
+        std::string url = FileUrl(path);
+        if (std::error_code error; fs::equivalent(path, UserFolder(base_), error) && url.size() > 1 && url.back() == '/')
+            url.pop_back();
         platform::SessionLogLine("Open in Files: " + url);
         if (!SDL_OpenURL(url.c_str()))
 #else
@@ -2975,9 +2970,6 @@ private:
         DrawRegionPrompt();
         DrawWelcome();
         DrawUpdateDialog();
-#if defined(MSCHARGED_PLATFORM_IOS)
-        DrawFolderView();
-#endif
         // The new files are in place: restart into them (unsaved settings are
         // saved or dropped in the update dialog first).
         if (update_.state == UpdateService::State::Installed && !dirty_ && !restart_)
@@ -6510,104 +6502,6 @@ private:
     }
 
 #if defined(MSCHARGED_PLATFORM_IOS)
-    // ------------------------------------------------- the app's top folder
-    // What the app's top folder (Documents, "Recharged" in the Files app)
-    // holds, listed in the launcher: folders first, then files with their
-    // size. A folder opens in the Files app, which opens subfolders from a
-    // link (OpenPath).
-    void ShowFolder(const fs::path& folder)
-    {
-        folder_view_path_ = folder;
-        folder_entries_.clear();
-        std::error_code error;
-        for (fs::directory_iterator it(folder, error), end; !error && it != end; it.increment(error))
-        {
-            FolderEntry entry;
-            entry.name = PathUtf8(it->path().filename());
-            if (entry.name.empty() || entry.name[0] == '.') continue;
-            std::error_code ignored;
-            entry.folder = it->is_directory(ignored);
-            if (!entry.folder) entry.size = it->file_size(ignored);
-            folder_entries_.push_back(std::move(entry));
-        }
-        const auto lower = [](std::string text) {
-            for (auto& c : text) c = char(std::tolower(static_cast<unsigned char>(c)));
-            return text;
-        };
-        std::sort(folder_entries_.begin(), folder_entries_.end(), [&](const FolderEntry& a, const FolderEntry& b) {
-            if (a.folder != b.folder) return a.folder;
-            return lower(a.name) < lower(b.name);
-        });
-        folder_view_pending_ = true;
-    }
-
-    void DrawFolderView()
-    {
-        if (folder_view_pending_)
-        {
-            ImGui::OpenPopup("Recharged folder");
-            folder_view_pending_ = false;
-        }
-        const auto& fonts = CurrentFonts();
-        const ImVec2 display = ImGui::GetIO().DisplaySize;
-        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, {0.5f, 0.5f});
-        ImGui::SetNextWindowSize({std::min(Dp(560), display.x - Dp(32)), 0});
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Dp(28, 24));
-        if (ImGui::BeginPopupModal("Recharged folder", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove
-            | ImGuiWindowFlags_AlwaysAutoResize))
-        {
-            TextColored(fonts.heading, color::text, "Recharged folder");
-            TextWrappedColored(fonts.caption, color::muted,
-                               "Your settings, game, saves and logs. In the Files app: On My iPhone (or iPad) > "
-                               "Recharged. Folders open in Files.");
-            ImGui::Dummy({0, Dp(6)});
-            const float row = Dp(46);
-            const float list = std::min(row * float(std::max<std::size_t>(folder_entries_.size(), 1)) + Dp(4),
-                                        display.y * 0.5f);
-            ImGui::BeginChild("##folder_entries", {0, list});
-            auto* draw = ImGui::GetWindowDrawList();
-            if (folder_entries_.empty()) TextColored(fonts.body, color::dim, "Empty");
-            for (std::size_t n = 0; n < folder_entries_.size(); ++n)
-            {
-                const auto& entry = folder_entries_[n];
-                ImGui::PushID(int(n));
-                const ImVec2 pos = ImGui::GetCursorScreenPos();
-                const float width = ImGui::GetContentRegionAvail().x;
-                const float middle = pos.y + row * 0.5f;
-                DrawIcon(draw, entry.folder ? Icon::Folder : Icon::Clipboard, {pos.x + Dp(14), middle}, Dp(17),
-                         Col(entry.folder ? color::accent : color::muted));
-                const float action = entry.folder ? Dp(140) : Dp(90);
-                DrawClipped(draw, fonts.body, {pos.x + Dp(34), middle - FontSize(fonts.body) * 0.5f},
-                            width - Dp(34) - action - Dp(8), color::text, entry.name);
-                if (entry.folder)
-                {
-                    ImGui::SetCursorScreenPos({pos.x + width - action, middle - Dp(17)});
-                    if (SecondaryButton("open", "Open in Files", {action, Dp(34)}, true, Icon::Folder))
-                        OpenPath(folder_view_path_ / PathFromUtf8(entry.name));
-                }
-                else
-                {
-                    const std::string size = FileSizeText(entry.size);
-                    const ImVec2 extent = TextSize(fonts.caption, size.c_str());
-                    DrawLabel(draw, fonts.caption, {pos.x + width - extent.x, middle - extent.y * 0.5f},
-                              Col(color::muted), size.c_str());
-                }
-                if (n + 1 < folder_entries_.size())
-                    draw->AddLine({pos.x, pos.y + row - 0.5f}, {pos.x + width, pos.y + row - 0.5f},
-                                  Col(color::border, 0.6f));
-                ImGui::SetCursorScreenPos(pos);
-                ImGui::Dummy({width, row});
-                ImGui::PopID();
-            }
-            ImGui::EndChild();
-            ImGui::Dummy({0, Dp(8)});
-            if (PrimaryButton("folder_close", "Close", Dp(120, 42), true) || CancelPressed())
-                ImGui::CloseCurrentPopup();
-            ImGui::EndPopup();
-        }
-        ImGui::PopStyleVar();
-    }
-
     // ------------------------------------------- on-screen controls layout
     // Over the whole launcher, the on-screen controls where the game draws
     // them (bootstrap/touch_layout.h; the screen is the game's). A finger
@@ -9423,17 +9317,6 @@ private:
     std::unique_ptr<platform::WiimotePlayerLights> remote_lights_;
     std::set<std::string> wii_held_; // remotes kept through one missed status answer
 #if defined(MSCHARGED_PLATFORM_IOS)
-    // The app's top folder as listed by DrawFolderView: its path, its
-    // entries, and whether the list is to open at the next frame.
-    struct FolderEntry
-    {
-        std::string name;
-        bool folder = false;
-        std::uintmax_t size = 0;
-    };
-    fs::path folder_view_path_;
-    std::vector<FolderEntry> folder_entries_;
-    bool folder_view_pending_ = false;
     // The on-screen controls' layout editor: the layout being edited, the
     // control the size buttons change and the one a finger drags (-1: none),
     // and where on that control the finger holds it.
