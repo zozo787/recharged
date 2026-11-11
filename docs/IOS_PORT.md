@@ -66,7 +66,7 @@ essayé), **À faire**, **Abandonné**.
 | F3 | Plein écran natif sur chaque format d'écran (pas de cadre de compatibilité), paysage | Validé (iPhone Duo) |
 | F4 | Réglages, données, sauvegardes et journaux dans `Documents`, visible dans Fichiers | Validé |
 | F5 | Importer une image disque depuis n'importe où (sélecteur d'iOS) | Validé |
-| F6 | Les boutons de dossier ouvrent le bon dossier dans Fichiers | À vérifier (dossier de `recharged.ini` resté sur l'ancien dossier avec `/private/var`) |
+| F6 | Les boutons de dossier ouvrent le bon dossier dans Fichiers | Validé pour `game`, `logs`, `texture_packs` ; dossier de `recharged.ini` : lien vers le fichier, à vérifier |
 | F7 | Launcher utilisable au doigt (défilement avec inertie) | Validé |
 | F8 | Launcher dans la zone sûre de l'écran | Validé (iPhone Duo) ; iPad à relever |
 | F9 | Réglages sans effet sur iOS masqués dans le launcher | Validé |
@@ -173,6 +173,9 @@ essayé), **À faire**, **Abandonné**.
   dossier dans Fichiers. `FileUrl` donne sur iOS
   `shareddocuments:///var/mobile/…/` (chemin normalisé sans `/private`, « / » final pour un
   dossier) ; chaque lien ouvert va dans le journal (« Open in Files: … »).
+  Pour Documents lui-même (dossier de `recharged.ini`), `OpenPath` envoie le
+  lien du fichier `recharged.ini` : Fichiers n'ouvre pas le dossier principal
+  de l'app par un lien de dossier.
   Import Dolphin masqué.
 - Une réinstallation de l'app peut vider Documents (réglages et image à
   refaire).
@@ -321,12 +324,11 @@ apparentées).
 - **Choix ignoré** → pendant sa présentation, `presentingViewController` est
   encore nul : ne conclure à une fermeture qu'après la fin de la
   présentation (ou 10 s sans apparition).
-- **Fichiers reste sur l'ancien dossier** (au moins pour Documents, le dossier
-  de `recharged.ini`) → le lien doit avoir la forme que donne iOS pour
-  Documents : `/var/mobile/…/`, sans le `/private` de `$HOME`, avec « / »
-  final. Avec `/private/var/…/` (`16aa80e`), échec constaté ; forme
-  `/var/mobile` à confirmer. Chaque lien ouvert est dans le journal
-  (« Open in Files: … »).
+- **Fichiers reste sur l'ancien dossier pour Documents** (dossier de
+  `recharged.ini`) → Fichiers ouvre les sous-dossiers de l'app par un lien
+  `shareddocuments:///var/mobile/…/dossier/`, mais pas le dossier principal
+  de l'app, quelle que soit la forme du lien (`/private/var` ou `/var`) :
+  donner le lien d'un fichier qui s'y trouve (`recharged.ini`).
 - **« Nintendo Wii Remote » dans le journal sans rien de connecté** → normal :
   Wiimote virtuelle créée par `desktop_wpad.cpp` pour chaque manette qui
   joue ; virtuelle, elle ne masque pas les contrôles tactiles.
@@ -463,5 +465,5 @@ renommés au format du projet le même jour).
 | L14 | 11-10 | Opacité des contrôles ; launcher dans la zone sûre ; zone sûre dans le journal | `161556d` | Appareil ; marges de l'iPhone Duo relevées | Terminé |
 | L15 | 11-10 | Revue : formes partagées entre tactile et disposition | `753dbf8` | CI | Terminé |
 | L16 | 11-11 | Import d'image par le sélecteur d'iOS (copie dans `Documents/game`) : en place, copie en arrière-plan, boucle d'iOS pendant le sélecteur, attente de sa présentation | `96cf044` `b1cda96` `2db888e` `1a3681d` | Appareil : import complet | Terminé |
-| L17 | 11-11 | Liens vers Fichiers : « / » final et `/private/var` (`16aa80e`), échec pour Documents ; puis chemin `/var/mobile` comme iOS le donne (`3c5cb21`) | `16aa80e` `3c5cb21` | Appareil : dossier de `recharged.ini` resté sur l'ancien dossier avec `16aa80e` | En cours |
+| L17 | 11-11 | Liens vers Fichiers au format d'iOS (`shareddocuments:///var/mobile/…/`, « / » final) ; pour le dossier principal de l'app (dossier de `recharged.ini`), lien vers le fichier `recharged.ini` | `16aa80e` `3c5cb21` + correctif du dossier des réglages | Appareil : `game`, `logs`, `texture_packs` s'ouvrent ; dossier des réglages à vérifier | En cours |
 | L18 | 11-11 | Documentation publique : historique réécrit sans détails personnels, « iPhone Duo » dans les commentaires, document refondu en cahier des charges | `a99206e` `7a6d180` `93dbe15` | — | Terminé |

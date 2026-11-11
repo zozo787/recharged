@@ -2858,9 +2858,18 @@ private:
     bool OpenPath(const fs::path& path)
     {
 #if defined(MSCHARGED_PLATFORM_IOS)
-        platform::SessionLogLine("Open in Files: " + FileUrl(path));
-#endif
+        // The Files app opens the app's folders from a link, except its top
+        // folder (Documents, "Recharged" in Files): it stayed on whatever it
+        // showed before. A link to a file there, the settings file, opens it.
+        fs::path target = path;
+        if (std::error_code error; fs::equivalent(path, UserFolder(base_), error) && fs::exists(file_.path, error))
+            target = file_.path;
+        const std::string url = FileUrl(target);
+        platform::SessionLogLine("Open in Files: " + url);
+        if (!SDL_OpenURL(url.c_str()))
+#else
         if (!SDL_OpenURL(FileUrl(path).c_str()))
+#endif
         {
             Notice(std::string("Cannot open the folder: ") + SDL_GetError(), NoticeKind::Error);
             return false;
