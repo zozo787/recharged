@@ -34,6 +34,11 @@ techniques (pas de données personnelles, pas de citations d'échanges).
   refuse de les mettre dans l'app.
 - **Commits** : même auteur que les commits existants de `ios-port` (voir
   `git log`), avec la ligne `Co-Authored-By` habituelle, sans lien de session.
+  Message au format du projet d'origine (`CONTRIBUTING.md`) :
+  `type(domaine): description (#163)`, avec `feat`, `fix`, `docs`, `ci`,
+  `chore` ou `revert`, et le domaine `ios` (par exemple
+  `fix(ios): ... (#163)`). Les commits `ios: …` et `ci: …` du 10 et du
+  11 novembre ne suivent pas ce format.
 - **Autres plateformes intactes** : le code propre à iOS est derrière
   `MSCHARGED_PLATFORM_IOS` (C++) ou `MSCHARGED_IOS` (CMake) ; ce qui est
   propre à macOS garde `__APPLE__ && !MSCHARGED_PLATFORM_IOS`. Les fichiers
