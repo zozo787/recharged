@@ -17,7 +17,8 @@
 @property(nonatomic, assign) void* userdata;
 @property(nonatomic, copy) NSString* destination;
 @property(nonatomic, assign) BOOL answered;
-@property(nonatomic, assign) BOOL open; // the picker is on screen
+@property(nonatomic, assign) BOOL open;      // the picker is on screen, or on its way
+@property(nonatomic, assign) BOOL presented; // its presentation has finished
 @end
 
 static RechargedImportDelegate* g_shown = nil;
@@ -208,6 +209,7 @@ void ShowImportFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_W
                                    uiwindow ? @"found" : @"missing"]);
     delegate.open = YES;
     [over presentViewController:picker animated:YES completion:^{
+        delegate.presented = YES;
         Log(@"shown");
     }];
     picker.presentationController.delegate = delegate;
@@ -217,6 +219,7 @@ void ShowImportFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_W
     // does for its message boxes (SDL_uikitmessagebox.m), the run loop runs
     // here until the picker closes; the launcher waits meanwhile, and gets
     // the copy's result later.
+    NSDate* const asked = NSDate.date;
     while (delegate.open)
     {
         @autoreleasepool
@@ -224,9 +227,14 @@ void ShowImportFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_W
             [NSRunLoop.currentRunLoop runMode:NSDefaultRunLoopMode
                                    beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
         }
-        if (delegate.open && !picker.presentingViewController && !picker.isBeingPresented)
+        // Gone without an answer: closed by iOS. Only once it has been shown
+        // (until then it is not attached to the window yet), or when it never
+        // showed up after 10 s, so the launcher cannot stay stuck here.
+        const BOOL gone = !picker.presentingViewController
+            && (delegate.presented || -asked.timeIntervalSinceNow > 10);
+        if (delegate.open && gone)
         {
-            Log(@"closed by iOS");
+            Log(delegate.presented ? @"closed by iOS" : @"never shown");
             delegate.open = NO;
             Finish(delegate, nil, nil);
         }
