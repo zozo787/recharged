@@ -37,8 +37,8 @@ techniques (pas de données personnelles, pas de citations d'échanges).
   Message au format du projet d'origine (`CONTRIBUTING.md`) :
   `type(domaine): description (#163)`, avec `feat`, `fix`, `docs`, `ci`,
   `chore` ou `revert`, et le domaine `ios` (par exemple
-  `fix(ios): ... (#163)`). Les commits `ios: …` et `ci: …` du 10 et du
-  11 novembre ne suivent pas ce format.
+  `fix(ios): ... (#163)`). Tous les commits de `ios-port` suivent ce format
+  depuis le renommage du 2026-11-11 (sauf la fusion de `stable`).
 - **Autres plateformes intactes** : le code propre à iOS est derrière
   `MSCHARGED_PLATFORM_IOS` (C++) ou `MSCHARGED_IOS` (CMake) ; ce qui est
   propre à macOS garde `__APPLE__ && !MSCHARGED_PLATFORM_IOS`. Les fichiers
@@ -83,7 +83,7 @@ essayé), **À faire**, **Abandonné**.
 
 | # | Exigence | Statut |
 |---|---|---|
-| N1 | Linux, Steam Deck, Windows et macOS compilent avec les changements du portage | Validé : macOS à `61ac825` (après le dernier changement partagé) ; Linux, Steam Deck, Windows à `86f05e3` (plus ancien, à refaire avant une pull request) |
+| N1 | Linux, Steam Deck, Windows et macOS compilent avec les changements du portage | Validé : macOS à `a043352` (après le dernier changement partagé) ; Linux, Steam Deck, Windows à `de83e2d` (plus ancien, à refaire avant une pull request) |
 | N2 | `ctest --preset debug` passe | À faire (exigé pour une pull request) |
 | N3 | Mémoire suffisante sur les modèles à 3 Go (iPhone XR, SE 2) | À tester |
 | N4 | Notices de licence des crates Rust dans l'app | À faire (`package_ios.py` ne copie que `Cargo.lock`) |
@@ -324,7 +324,7 @@ apparentées).
 - **Fichiers reste sur l'ancien dossier** (au moins pour Documents, le dossier
   de `recharged.ini`) → le lien doit avoir la forme que donne iOS pour
   Documents : `/var/mobile/…/`, sans le `/private` de `$HOME`, avec « / »
-  final. Avec `/private/var/…/` (`27602a2`), échec constaté ; forme
+  final. Avec `/private/var/…/` (`16aa80e`), échec constaté ; forme
   `/var/mobile` à confirmer. Chaque lien ouvert est dans le journal
   (« Open in Files: … »).
 - **« Nintendo Wii Remote » dans le journal sans rien de connecté** → normal :
@@ -422,18 +422,18 @@ rendre configurables l'identifiant d'app et le runner.
 ## 10. Historique
 
 - **2026-11-09** — Cible iOS dans CMake, `Info.plist`, packager, workflow ;
-  premier `.ipa` (`f27bf6e`). Premier démarrage : launcher, détection
+  premier `.ipa` (`9165dd2`). Premier démarrage : launcher, détection
   du disque, jeu lancé. Dossiers de l'utilisateur dans Documents. Caches CI.
 - **2026-11-10** — SDK iOS 27 (`xcode-27`) : plus de cadre de compatibilité ;
   fenêtres sans bordure ; antialiasing désactivé par défaut. Contrôles
   tactiles, « Touch screen » comme choix de joueur, pointeur au doigt, sortie
   par la croix. Fusion de Recharged 1.1.6. Autres plateformes vérifiées.
   Finitions du launcher (réglages inutiles masqués). Issue #163 ouverte.
-  Bouton HOME retiré ; « Changer ». Éditeur de disposition (`5c49cdd`),
-  tactile compilé pour iOS seulement (`02502c9`), opacité et zones sûres
-  (`a829838`).
-- **2026-11-11** — Import d'image par le sélecteur d'iOS (`071a389` à
-  `6e64657`), liens vers Fichiers (`27602a2`). Historique de `ios-port`
+  Bouton HOME retiré ; « Changer ». Éditeur de disposition (`df906a5`),
+  tactile compilé pour iOS seulement (`614a3e5`), opacité et zones sûres
+  (`161556d`).
+- **2026-11-11** — Import d'image par le sélecteur d'iOS (`96cf044` à
+  `1a3681d`), liens vers Fichiers (`16aa80e`). Historique de `ios-port`
   réécrit (poussé de force) pour retirer les détails personnels des
   anciennes versions de ce document ; le code de chaque commit est inchangé.
   Document refondu en cahier des charges.
@@ -442,25 +442,26 @@ rendre configurables l'identifiant d'app et le runner.
 
 Un lot = un objectif, ses commits sur `ios-port`, la vérification faite
 (CI : compilation ; appareil : essai sur l'iPhone Duo ou l'iPad) et son état.
-Les commits sont ceux de l'historique réécrit le 2026-11-11.
+Les commits sont ceux de l'historique réécrit le 2026-11-11 (messages
+renommés au format du projet le même jour).
 
 | Lot | Date | Objet | Commits | Vérification | État |
 |---|---|---|---|---|---|
-| L1 | 11-09 | Cible iOS dans CMake, `Info.plist`, packager, workflow ; cible de déploiement gardée hors des outils du Mac ; programme simple pour le packager ; module EU seul par défaut | `25ce29d` `0e4e72f` `ba799fa` `0086a6c` `f27bf6e` | CI : `.ipa` produit | Terminé |
-| L2 | 11-09 | Fichiers de l'utilisateur dans Documents ; launcher et jeu en plein écran ; barre de mise à jour masquée | `b496c32` `fda1f34` | Appareil : app, launcher et jeu démarrent | Terminé |
-| L3 | 11-09/10 | CI plus rapide : caches (sources préparées, SQLite, Cargo, ccache Objective-C/C++), un job par cœur, Xcode le plus récent, choix du runner, une file par runner | `564d56e` `0c45ed3` `a6940f4` `d94d399` | CI : ~23 → 7-10 min avec cache | Terminé |
-| L4 | 11-10 | Plein écran natif : SDK iOS 27 (runner `xcode-27`), fenêtres sans bordure ; essais antérieurs retirés | `45998c4` `09f3614` `5e2344c` | Appareil : plus de cadre, écran rempli | Terminé |
-| L5 | 11-09/10 | Défilement du launcher au doigt (fenêtre racine exclue) ; rythme vsync seul | `bd2b07b` `a460039` `a6940f4` | Appareil : défilement fluide | Terminé |
-| L6 | 11-10 | Performances : défauts sans antialiasing, rendu à la taille de la fenêtre | `4c8b8d6` `66bdfff` | Appareil : 60 FPS, 120 FPS stable | Terminé |
-| L7 | 11-10 | Contrôles tactiles : manette virtuelle, « Touch screen » comme choix de joueur, remplacement par une manette physique, pointeur au doigt, masques complets, touchers brefs, −/1/2, traces de diagnostic puis retrait | `a460039` `4c0c5a7` `d11bc4d` `c993fa8` `801f7b9` `a7db6ec` `c0cd67d` `7b8bff5` `0168fdd` `001d0ba` `9b21288` `86f05e3` | Appareil : tous les boutons et le pointeur | Terminé |
-| L8 | 11-10 | Fusion de Recharged 1.1.6 | `6900d32` | CI | Terminé |
-| L9 | 11-10 | Sortie du jeu : croix discrète et confirmation ; l'app se ferme (relance refusée par iOS) | `daad627` `3fe0f1f` `16314bd` `d70de62` | Appareil : Annuler et Quitter | Terminé |
-| L10 | 11-10 | Autres plateformes : contrôle macOS manuel ; code partagé neutre | `0d78697` `3519919` `86f05e3` | CI : Linux, Steam Deck, Windows, macOS | Terminé |
-| L11 | 11-10 | Launcher : réglages sans effet sur iOS masqués, textes iPhone/iPad | `7670100` | Appareil | Terminé |
-| L12 | 11-10 | Bouton HOME retiré (menu HOME non compilé à l'origine) ; « Objet » renommé « Changer » | `5ad1f21` `094862b` | Appareil | Terminé |
-| L13 | 11-10 | Éditeur de disposition des contrôles ; tactile compilé pour iOS seulement | `5c49cdd` `02502c9` `61ac825` `85ca279` | Appareil : éditeur, reprise en jeu, Reset ; CI : macOS | Terminé |
-| L14 | 11-10 | Opacité des contrôles ; launcher dans la zone sûre ; zone sûre dans le journal | `a829838` | Appareil ; marges de l'iPhone Duo relevées | Terminé |
-| L15 | 11-10 | Revue : formes partagées entre tactile et disposition | `0a381e5` | CI | Terminé |
-| L16 | 11-11 | Import d'image par le sélecteur d'iOS (copie dans `Documents/game`) : en place, copie en arrière-plan, boucle d'iOS pendant le sélecteur, attente de sa présentation | `071a389` `ca3a04e` `4cc373f` `6e64657` | Appareil : import complet | Terminé |
-| L17 | 11-11 | Liens vers Fichiers : « / » final et `/private/var` (`27602a2`), échec pour Documents ; puis chemin `/var/mobile` comme iOS le donne (`66a40f4`) | `27602a2` `66a40f4` | Appareil : dossier de `recharged.ini` resté sur l'ancien dossier avec `27602a2` | En cours |
-| L18 | 11-11 | Documentation publique : historique réécrit sans détails personnels, « iPhone Duo » dans les commentaires, document refondu en cahier des charges | `51c785c` `2584923` `4f605ed` | — | Terminé |
+| L1 | 11-09 | Cible iOS dans CMake, `Info.plist`, packager, workflow ; cible de déploiement gardée hors des outils du Mac ; programme simple pour le packager ; module EU seul par défaut | `8e243f0` `219e794` `a188b01` `56d25ae` `9165dd2` | CI : `.ipa` produit | Terminé |
+| L2 | 11-09 | Fichiers de l'utilisateur dans Documents ; launcher et jeu en plein écran ; barre de mise à jour masquée | `eca21e8` `6e82ae6` | Appareil : app, launcher et jeu démarrent | Terminé |
+| L3 | 11-09/10 | CI plus rapide : caches (sources préparées, SQLite, Cargo, ccache Objective-C/C++), un job par cœur, Xcode le plus récent, choix du runner, une file par runner | `3ef2159` `9533f6b` `f216a1c` `062159e` | CI : ~23 → 7-10 min avec cache | Terminé |
+| L4 | 11-10 | Plein écran natif : SDK iOS 27 (runner `xcode-27`), fenêtres sans bordure ; essais antérieurs retirés | `41c4eb9` `8cca053` `e259ee2` | Appareil : plus de cadre, écran rempli | Terminé |
+| L5 | 11-09/10 | Défilement du launcher au doigt (fenêtre racine exclue) ; rythme vsync seul | `7b4a848` `86419a3` `f216a1c` | Appareil : défilement fluide | Terminé |
+| L6 | 11-10 | Performances : défauts sans antialiasing, rendu à la taille de la fenêtre | `cc45833` `24e31ca` | Appareil : 60 FPS, 120 FPS stable | Terminé |
+| L7 | 11-10 | Contrôles tactiles : manette virtuelle, « Touch screen » comme choix de joueur, remplacement par une manette physique, pointeur au doigt, masques complets, touchers brefs, −/1/2, traces de diagnostic puis retrait | `86419a3` `605f31e` `46eb36e` `113fea1` `71b7e64` `43ce2f3` `25043b9` `11ecf11` `5c27470` `145d0bb` `2fd2910` `de83e2d` | Appareil : tous les boutons et le pointeur | Terminé |
+| L8 | 11-10 | Fusion de Recharged 1.1.6 | `324f579` | CI | Terminé |
+| L9 | 11-10 | Sortie du jeu : croix discrète et confirmation ; l'app se ferme (relance refusée par iOS) | `72d36b1` `5dd4e92` `29038e5` `2348078` | Appareil : Annuler et Quitter | Terminé |
+| L10 | 11-10 | Autres plateformes : contrôle macOS manuel ; code partagé neutre | `899202e` `4c6cb73` `de83e2d` | CI : Linux, Steam Deck, Windows, macOS | Terminé |
+| L11 | 11-10 | Launcher : réglages sans effet sur iOS masqués, textes iPhone/iPad | `d638c7d` | Appareil | Terminé |
+| L12 | 11-10 | Bouton HOME retiré (menu HOME non compilé à l'origine) ; « Objet » renommé « Changer » | `d7ba138` `e73ca80` | Appareil | Terminé |
+| L13 | 11-10 | Éditeur de disposition des contrôles ; tactile compilé pour iOS seulement | `df906a5` `614a3e5` `a043352` `bb6bc91` | Appareil : éditeur, reprise en jeu, Reset ; CI : macOS | Terminé |
+| L14 | 11-10 | Opacité des contrôles ; launcher dans la zone sûre ; zone sûre dans le journal | `161556d` | Appareil ; marges de l'iPhone Duo relevées | Terminé |
+| L15 | 11-10 | Revue : formes partagées entre tactile et disposition | `753dbf8` | CI | Terminé |
+| L16 | 11-11 | Import d'image par le sélecteur d'iOS (copie dans `Documents/game`) : en place, copie en arrière-plan, boucle d'iOS pendant le sélecteur, attente de sa présentation | `96cf044` `b1cda96` `2db888e` `1a3681d` | Appareil : import complet | Terminé |
+| L17 | 11-11 | Liens vers Fichiers : « / » final et `/private/var` (`16aa80e`), échec pour Documents ; puis chemin `/var/mobile` comme iOS le donne (`3c5cb21`) | `16aa80e` `3c5cb21` | Appareil : dossier de `recharged.ini` resté sur l'ancien dossier avec `16aa80e` | En cours |
+| L18 | 11-11 | Documentation publique : historique réécrit sans détails personnels, « iPhone Duo » dans les commentaires, document refondu en cahier des charges | `a99206e` `7a6d180` `93dbe15` | — | Terminé |
