@@ -246,5 +246,4 @@ void ShowImportFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_W
     delegate.destination = [NSString stringWithUTF8String:destination.c_str()];
     Show(picker, delegate, window);
 }
-
 } // namespace mscharged::launcher

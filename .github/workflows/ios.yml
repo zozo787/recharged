@@ -4,7 +4,6 @@ name: iOS build
 # the ios-release preset, packaged as an unsigned .ipa. Signing happens when it
 # is installed. No game data: the disc image is read on the device at run time.
 on:
-  # Documentation alone does not rebuild the app.
   # Not for documentation, nor for the macOS check's file (changed to start
   # that check, .github/workflows/macos-check.yml).
   push:
@@ -56,8 +55,8 @@ jobs:
       CCACHE_BASEDIR: ${{ github.workspace }}
       CCACHE_NOHASHDIR: 'true'
       CCACHE_MAXSIZE: 3G
-      # One module per game version; the player's copy is European, so pushes
-      # build only that one (repository variable IOS_REGIONS, e.g. "all").
+      # One module per game version; pushes build only the European one
+      # (repository variable IOS_REGIONS, e.g. "all").
       IOS_REGIONS: ${{ inputs.regions || vars.IOS_REGIONS || 'eu' }}
       # No IPHONEOS_DEPLOYMENT_TARGET here: Apple's clang reads it for every
       # compile, so the tools the build runs on this Mac (SQLite's generator,
