@@ -19,8 +19,9 @@ namespace mscharged::launcher
 // numbered name. `callback` then receives the copy's path the way an
 // SDL_ShowOpenFileDialog callback does: a list with the path, an empty list
 // when the picker is cancelled, or NULL with SDL_GetError() set on a failure.
-// Call it on the main thread; the callback runs on it too. Each step goes to
-// the session log ("File picker: ...").
+// Call it on the main thread: it returns once the picker has closed (the
+// copy goes on after); the callback runs on the main thread too. Each step
+// goes to the session log ("File picker: ...").
 void ShowImportFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_Window* window,
                           const std::string& destination);
 } // namespace mscharged::launcher

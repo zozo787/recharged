@@ -17,6 +17,7 @@
 @property(nonatomic, assign) void* userdata;
 @property(nonatomic, copy) NSString* destination;
 @property(nonatomic, assign) BOOL answered;
+@property(nonatomic, assign) BOOL open; // the picker is on screen
 @end
 
 static RechargedImportDelegate* g_shown = nil;
@@ -134,6 +135,7 @@ NSString* Import(NSURL* picked, NSString* folder, NSString** error)
 @implementation RechargedImportDelegate
 - (void)documentPicker:(UIDocumentPickerViewController*)controller didPickDocumentsAtURLs:(NSArray<NSURL*>*)urls
 {
+    self.open = NO;
     NSURL* picked = urls.firstObject;
     Log(picked ? [@"picked " stringByAppendingString:picked.path] : @"picked nothing");
     if (!picked)
@@ -154,6 +156,7 @@ NSString* Import(NSURL* picked, NSString* folder, NSString** error)
 
 - (void)documentPickerWasCancelled:(UIDocumentPickerViewController*)controller
 {
+    self.open = NO;
     Finish(self, nil, nil);
 }
 
@@ -162,6 +165,7 @@ NSString* Import(NSURL* picked, NSString* folder, NSString** error)
 - (void)presentationControllerDidDismiss:(UIPresentationController*)presentationController
 {
     Log(@"closed");
+    self.open = NO;
     if (g_shown == self && !self.answered) Finish(self, nil, nil);
 }
 @end
@@ -202,9 +206,30 @@ void ShowImportFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_W
     g_shown = delegate;
     Log([NSString stringWithFormat:@"showing it over %@ (window %@)", NSStringFromClass(over.class),
                                    uiwindow ? @"found" : @"missing"]);
+    delegate.open = YES;
     [over presentViewController:picker animated:YES completion:^{
         Log(@"shown");
     }];
     picker.presentationController.delegate = delegate;
+    // The picker's contents come from another process, which needs this
+    // app's main run loop free to answer it: the launcher's loop only gives
+    // it an instant between frames, and the picker stayed blank. So, as SDL
+    // does for its message boxes (SDL_uikitmessagebox.m), the run loop runs
+    // here until the picker closes; the launcher waits meanwhile, and gets
+    // the copy's result later.
+    while (delegate.open)
+    {
+        @autoreleasepool
+        {
+            [NSRunLoop.currentRunLoop runMode:NSDefaultRunLoopMode
+                                   beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+        }
+        if (delegate.open && !picker.presentingViewController && !picker.isBeingPresented)
+        {
+            Log(@"closed by iOS");
+            delegate.open = NO;
+            Finish(delegate, nil, nil);
+        }
+    }
 }
 } // namespace mscharged::launcher
