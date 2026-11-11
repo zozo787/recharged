@@ -457,5 +457,5 @@ Les commits sont ceux de l'historique réécrit le 2026-11-11.
 | L14 | 11-10 | Opacité des contrôles ; launcher dans la zone sûre ; zone sûre dans le journal | `a829838` | Appareil ; marges de l'iPhone Duo relevées | Terminé |
 | L15 | 11-10 | Revue : formes partagées entre tactile et disposition | `0a381e5` | CI | Terminé |
 | L16 | 11-11 | Import d'image par le sélecteur d'iOS (copie dans `Documents/game`) : en place, copie en arrière-plan, boucle d'iOS pendant le sélecteur, attente de sa présentation | `071a389` `ca3a04e` `4cc373f` `6e64657` | Appareil : import complet | Terminé |
-| L17 | 11-11 | Liens vers Fichiers au format d'iOS (`/private/var/…/`) | `27602a2` | — | À vérifier sur appareil |
+| L17 | 11-11 | Liens vers Fichiers : « / » final et `/private/var` (`27602a2`), échec pour Documents ; puis chemin `/var/mobile` comme iOS le donne (`66a40f4`) | `27602a2` `66a40f4` | Appareil : dossier de `recharged.ini` resté sur l'ancien dossier avec `27602a2` | En cours |
 | L18 | 11-11 | Documentation publique : historique réécrit sans détails personnels, « iPhone Duo » dans les commentaires, document refondu en cahier des charges | `51c785c` `2584923` `4f605ed` | — | Terminé |
