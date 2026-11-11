@@ -3,7 +3,10 @@
 Ce document décrit le portage de Recharged vers iPhone et iPad : ce qu'il doit
 faire, comment il est construit, où il en est, et les pièges déjà rencontrés.
 **Il fait foi** : le lire en entier avant de reprendre le travail, et le tenir
-à jour à chaque changement (statut des exigences, conception, historique).
+à jour à chaque changement : statut des exigences (§ 3), conception (§ 4),
+pièges (§ 5), et une entrée dans le suivi des travaux (§ 11) pour chaque lot
+de travail, avec ses commits et sa vérification. Les runs de CI sont
+supprimés au fil du temps : citer des commits, pas des numéros de runs.
 
 Le dépôt est public : ce document ne contient que des informations
 techniques (pas de données personnelles, pas de citations d'échanges).
@@ -75,7 +78,7 @@ essayé), **À faire**, **Abandonné**.
 
 | # | Exigence | Statut |
 |---|---|---|
-| N1 | Linux, Steam Deck, Windows et macOS compilent avec les changements du portage | Validé (macOS run 42909894623 après le dernier changement partagé ; Linux/Windows run 42854445316, plus ancien) |
+| N1 | Linux, Steam Deck, Windows et macOS compilent avec les changements du portage | Validé : macOS à `61ac825` (après le dernier changement partagé) ; Linux, Steam Deck, Windows à `86f05e3` (plus ancien, à refaire avant une pull request) |
 | N2 | `ctest --preset debug` passe | À faire (exigé pour une pull request) |
 | N3 | Mémoire suffisante sur les modèles à 3 Go (iPhone XR, SE 2) | À tester |
 | N4 | Notices de licence des crates Rust dans l'app | À faire (`package_ios.py` ne copie que `Cargo.lock`) |
@@ -410,7 +413,7 @@ rendre configurables l'identifiant d'app et le runner.
 ## 10. Historique
 
 - **2026-11-09** — Cible iOS dans CMake, `Info.plist`, packager, workflow ;
-  premier `.ipa` (run 42638583471). Premier démarrage : launcher, détection
+  premier `.ipa` (`f27bf6e`). Premier démarrage : launcher, détection
   du disque, jeu lancé. Dossiers de l'utilisateur dans Documents. Caches CI.
 - **2026-11-10** — SDK iOS 27 (`xcode-27`) : plus de cadre de compatibilité ;
   fenêtres sans bordure ; antialiasing désactivé par défaut. Contrôles
@@ -425,3 +428,30 @@ rendre configurables l'identifiant d'app et le runner.
   réécrit (poussé de force) pour retirer les détails personnels des
   anciennes versions de ce document ; le code de chaque commit est inchangé.
   Document refondu en cahier des charges.
+
+## 11. Suivi des travaux
+
+Un lot = un objectif, ses commits sur `ios-port`, la vérification faite
+(CI : compilation ; appareil : essai sur l'iPhone Duo ou l'iPad) et son état.
+Les commits sont ceux de l'historique réécrit le 2026-11-11.
+
+| Lot | Date | Objet | Commits | Vérification | État |
+|---|---|---|---|---|---|
+| L1 | 11-09 | Cible iOS dans CMake, `Info.plist`, packager, workflow ; cible de déploiement gardée hors des outils du Mac ; programme simple pour le packager ; module EU seul par défaut | `25ce29d` `0e4e72f` `ba799fa` `0086a6c` `f27bf6e` | CI : `.ipa` produit | Terminé |
+| L2 | 11-09 | Fichiers de l'utilisateur dans Documents ; launcher et jeu en plein écran ; barre de mise à jour masquée | `b496c32` `fda1f34` | Appareil : app, launcher et jeu démarrent | Terminé |
+| L3 | 11-09/10 | CI plus rapide : caches (sources préparées, SQLite, Cargo, ccache Objective-C/C++), un job par cœur, Xcode le plus récent, choix du runner, une file par runner | `564d56e` `0c45ed3` `a6940f4` `d94d399` | CI : ~23 → 7-10 min avec cache | Terminé |
+| L4 | 11-10 | Plein écran natif : SDK iOS 27 (runner `xcode-27`), fenêtres sans bordure ; essais antérieurs retirés | `45998c4` `09f3614` `5e2344c` | Appareil : plus de cadre, écran rempli | Terminé |
+| L5 | 11-09/10 | Défilement du launcher au doigt (fenêtre racine exclue) ; rythme vsync seul | `bd2b07b` `a460039` `a6940f4` | Appareil : défilement fluide | Terminé |
+| L6 | 11-10 | Performances : défauts sans antialiasing, rendu à la taille de la fenêtre | `4c8b8d6` `66bdfff` | Appareil : 60 FPS, 120 FPS stable | Terminé |
+| L7 | 11-10 | Contrôles tactiles : manette virtuelle, « Touch screen » comme choix de joueur, remplacement par une manette physique, pointeur au doigt, masques complets, touchers brefs, −/1/2, traces de diagnostic puis retrait | `a460039` `4c0c5a7` `d11bc4d` `c993fa8` `801f7b9` `a7db6ec` `c0cd67d` `7b8bff5` `0168fdd` `001d0ba` `9b21288` `86f05e3` | Appareil : tous les boutons et le pointeur | Terminé |
+| L8 | 11-10 | Fusion de Recharged 1.1.6 | `6900d32` | CI | Terminé |
+| L9 | 11-10 | Sortie du jeu : croix discrète et confirmation ; l'app se ferme (relance refusée par iOS) | `daad627` `3fe0f1f` `16314bd` `d70de62` | Appareil : Annuler et Quitter | Terminé |
+| L10 | 11-10 | Autres plateformes : contrôle macOS manuel ; code partagé neutre | `0d78697` `3519919` `86f05e3` | CI : Linux, Steam Deck, Windows, macOS | Terminé |
+| L11 | 11-10 | Launcher : réglages sans effet sur iOS masqués, textes iPhone/iPad | `7670100` | Appareil | Terminé |
+| L12 | 11-10 | Bouton HOME retiré (menu HOME non compilé à l'origine) ; « Objet » renommé « Changer » | `5ad1f21` `094862b` | Appareil | Terminé |
+| L13 | 11-10 | Éditeur de disposition des contrôles ; tactile compilé pour iOS seulement | `5c49cdd` `02502c9` `61ac825` `85ca279` | Appareil : éditeur, reprise en jeu, Reset ; CI : macOS | Terminé |
+| L14 | 11-10 | Opacité des contrôles ; launcher dans la zone sûre ; zone sûre dans le journal | `a829838` | Appareil ; marges de l'iPhone Duo relevées | Terminé |
+| L15 | 11-10 | Revue : formes partagées entre tactile et disposition | `0a381e5` | CI | Terminé |
+| L16 | 11-11 | Import d'image par le sélecteur d'iOS (copie dans `Documents/game`) : en place, copie en arrière-plan, boucle d'iOS pendant le sélecteur, attente de sa présentation | `071a389` `ca3a04e` `4cc373f` `6e64657` | Appareil : import complet | Terminé |
+| L17 | 11-11 | Liens vers Fichiers au format d'iOS (`/private/var/…/`) | `27602a2` | — | À vérifier sur appareil |
+| L18 | 11-11 | Documentation publique : historique réécrit sans détails personnels, « iPhone Duo » dans les commentaires, document refondu en cahier des charges | `51c785c` `2584923` `4f605ed` | — | Terminé |
