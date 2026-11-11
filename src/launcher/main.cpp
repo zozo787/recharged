@@ -4917,7 +4917,12 @@ private:
         if (library_limited_)
             footer += std::string(footer.empty() ? "" : " ")
                 + "Only the first 2000 image files were looked at; select a folder closer to your images.";
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS: while the picker is open and the chosen image is copied in.
+        const char* choose = candidate_pending_ ? "Checking the file..." : DialogActive() ? "Importing..." : "Choose file...";
+#else
         const char* choose = candidate_pending_ ? "Checking the file..." : "Choose file...";
+#endif
         const ImVec2 button{GhostWidth(choose, Icon::Disc), Dp(34)};
         const ImVec2 at = ImGui::GetCursorScreenPos();
         const float width = ImGui::GetContentRegionAvail().x;

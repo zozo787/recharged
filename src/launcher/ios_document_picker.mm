@@ -1,39 +1,52 @@
 #include "launcher/ios_document_picker.h"
 
+#include "platform/session_log.h"
+
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_properties.h>
+
+#include <string>
 
 #import <UIKit/UIKit.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 
 // The picker's delegate, kept alive while the picker is shown (the picker
-// itself only holds it weakly).
-@interface RechargedImportDelegate : NSObject <UIDocumentPickerDelegate>
+// itself only holds it weakly) and until the copy is done.
+@interface RechargedImportDelegate : NSObject <UIDocumentPickerDelegate, UIAdaptivePresentationControllerDelegate>
 @property(nonatomic, assign) SDL_DialogFileCallback callback;
 @property(nonatomic, assign) void* userdata;
 @property(nonatomic, copy) NSString* destination;
+@property(nonatomic, assign) BOOL answered;
 @end
 
 static RechargedImportDelegate* g_shown = nil;
 
 namespace
 {
-// Answers the caller once: `path` chosen, or cancelled (both null), or failed.
-// Then lets the delegate go (the last use of it: the delegate methods return
-// right after).
+void Log(NSString* text)
+{
+    mscharged::platform::SessionLogLine(std::string("File picker: ") + text.UTF8String);
+}
+
+// Answers the caller once, on the main thread: `path` chosen, or cancelled
+// (both null), or failed. Then lets the delegate go.
 void Finish(RechargedImportDelegate* delegate, NSString* path, NSString* error)
 {
+    if (delegate.answered) return;
+    delegate.answered = YES;
     if (error)
     {
+        Log(error);
         SDL_SetError("%s", error.UTF8String);
         delegate.callback(delegate.userdata, nullptr, -1);
     }
     else
     {
+        Log(path ? [@"copied to " stringByAppendingString:path] : @"cancelled");
         const char* list[2] = {path ? path.UTF8String : nullptr, nullptr};
         delegate.callback(delegate.userdata, list, -1);
     }
-    g_shown = nil;
+    if (g_shown == delegate) g_shown = nil;
 }
 
 // Where the picked file goes: its own name in `folder`, unless a different
@@ -42,7 +55,8 @@ void Finish(RechargedImportDelegate* delegate, NSString* path, NSString* error)
 NSString* Target(NSString* folder, NSString* name, unsigned long long size, BOOL* same)
 {
     NSFileManager* files = NSFileManager.defaultManager;
-    NSString* base = name.stringByDeletingPathExtension, * extension = name.pathExtension;
+    NSString* base = name.stringByDeletingPathExtension;
+    NSString* extension = name.pathExtension;
     for (int n = 1;; ++n)
     {
         NSString* file = n == 1 ? name
@@ -62,54 +76,93 @@ NSString* Target(NSString* folder, NSString* name, unsigned long long size, BOOL
         }
     }
 }
+
+// Copies `picked` (a file the picker opened for this app, anywhere: iCloud
+// Drive, another app's folder, a USB drive) into `folder`. Off the main
+// thread: an image is 1 to 2 GB. Returns the copy's path, or nil and `error`.
+NSString* Import(NSURL* picked, NSString* folder, NSString** error)
+{
+    NSFileManager* files = NSFileManager.defaultManager;
+    NSError* failure = nil;
+    if (![files createDirectoryAtPath:folder withIntermediateDirectories:YES attributes:nil error:&failure])
+    {
+        *error = [@"Cannot make the game folder: " stringByAppendingString:failure.localizedDescription];
+        return nil;
+    }
+    // The picker grants access to the file only between these two calls.
+    const BOOL scoped = [picked startAccessingSecurityScopedResource];
+    __block NSString* result = nil;
+    __block NSString* problem = nil;
+    // The coordinator downloads a file iCloud keeps only online first.
+    NSFileCoordinator* coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
+    [coordinator coordinateReadingItemAtURL:picked
+                                    options:NSFileCoordinatorReadingWithoutChanges
+                                      error:&failure
+                                 byAccessor:^(NSURL* readable) {
+        NSError* problemError = nil;
+        NSDictionary* attributes = [files attributesOfItemAtPath:readable.path error:&problemError];
+        if (!attributes)
+        {
+            problem = [@"Cannot read the chosen file: " stringByAppendingString:problemError.localizedDescription];
+            return;
+        }
+        Log([NSString stringWithFormat:@"copying %@ (%llu bytes)", readable.lastPathComponent, attributes.fileSize]);
+        BOOL same = NO;
+        NSString* target = Target(folder, picked.lastPathComponent, attributes.fileSize, &same);
+        if (same)
+        {
+            Log(@"the same file is already in the game folder");
+            result = target;
+            return;
+        }
+        if (![files copyItemAtPath:readable.path toPath:target error:&problemError])
+        {
+            [files removeItemAtPath:target error:nil]; // a partial copy
+            problem = [@"Cannot copy the chosen file: " stringByAppendingString:problemError.localizedDescription];
+            return;
+        }
+        result = target;
+    }];
+    if (scoped) [picked stopAccessingSecurityScopedResource];
+    if (!result && !problem && failure)
+        problem = [@"Cannot open the chosen file: " stringByAppendingString:failure.localizedDescription];
+    *error = problem;
+    return result;
+}
 } // namespace
 
 @implementation RechargedImportDelegate
 - (void)documentPicker:(UIDocumentPickerViewController*)controller didPickDocumentsAtURLs:(NSArray<NSURL*>*)urls
 {
-    // Opened "as a copy": iOS has already copied the file into this app's
-    // temporary folder (downloading it first from iCloud if needed), so it
-    // is moved, not copied again.
     NSURL* picked = urls.firstObject;
+    Log(picked ? [@"picked " stringByAppendingString:picked.path] : @"picked nothing");
     if (!picked)
     {
         Finish(self, nil, nil);
         return;
     }
-    NSFileManager* files = NSFileManager.defaultManager;
-    NSError* error = nil;
-    if (![files createDirectoryAtPath:self.destination withIntermediateDirectories:YES attributes:nil error:&error])
-    {
-        Finish(self, nil, [@"Cannot make the game folder: " stringByAppendingString:error.localizedDescription]);
-        return;
-    }
-    NSDictionary* attributes = [files attributesOfItemAtPath:picked.path error:&error];
-    if (!attributes)
-    {
-        Finish(self, nil, [@"Cannot read the chosen file: " stringByAppendingString:error.localizedDescription]);
-        return;
-    }
-    BOOL same = NO;
-    NSString* target = Target(self.destination, picked.lastPathComponent, attributes.fileSize, &same);
-    if (same)
-    {
-        [files removeItemAtURL:picked error:nil];
-        Finish(self, target, nil);
-        return;
-    }
-    if (![files moveItemAtPath:picked.path toPath:target error:&error]
-        && ![files copyItemAtPath:picked.path toPath:target error:&error])
-    {
-        Finish(self, nil, [@"Cannot copy the chosen file: " stringByAppendingString:error.localizedDescription]);
-        return;
-    }
-    [files removeItemAtURL:picked error:nil];
-    Finish(self, target, nil);
+    RechargedImportDelegate* delegate = self; // kept by the blocks until the copy is done
+    NSString* folder = self.destination;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        NSString* error = nil;
+        NSString* path = Import(picked, folder, &error);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            Finish(delegate, path, error);
+        });
+    });
 }
 
 - (void)documentPickerWasCancelled:(UIDocumentPickerViewController*)controller
 {
     Finish(self, nil, nil);
+}
+
+// Closed some other way (swiped down, or by iOS): the same as Cancel, unless
+// a file was picked.
+- (void)presentationControllerDidDismiss:(UIPresentationController*)presentationController
+{
+    Log(@"closed");
+    if (g_shown == self && !self.answered) Finish(self, nil, nil);
 }
 @end
 
@@ -130,14 +183,15 @@ void ShowImportFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_W
     while (over.presentedViewController) over = over.presentedViewController;
     if (!over)
     {
+        Log(@"no view controller to show it over");
         SDL_SetError("Cannot show the file picker: no window to show it over");
         callback(userdata, nullptr, -1);
         return;
     }
     // Any file: iOS does not know .rvz or .wbfs, and the launcher checks what
-    // the file holds.
+    // the file holds. Opened in place (not "as a copy"): this app copies it.
     UIDocumentPickerViewController* picker =
-        [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeData] asCopy:YES];
+        [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeData] asCopy:NO];
     picker.allowsMultipleSelection = NO;
     picker.shouldShowFileExtensions = YES;
     RechargedImportDelegate* delegate = [RechargedImportDelegate new];
@@ -146,6 +200,11 @@ void ShowImportFileDialog(SDL_DialogFileCallback callback, void* userdata, SDL_W
     delegate.destination = [NSString stringWithUTF8String:destination.c_str()];
     picker.delegate = delegate;
     g_shown = delegate;
-    [over presentViewController:picker animated:YES completion:nil];
+    Log([NSString stringWithFormat:@"showing it over %@ (window %@)", NSStringFromClass(over.class),
+                                   uiwindow ? @"found" : @"missing"]);
+    [over presentViewController:picker animated:YES completion:^{
+        Log(@"shown");
+    }];
+    picker.presentationController.delegate = delegate;
 }
 } // namespace mscharged::launcher
