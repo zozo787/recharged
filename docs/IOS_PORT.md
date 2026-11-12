@@ -520,6 +520,19 @@ rendre configurables l'identifiant d'app et le runner.
   réécrit (poussé de force) pour retirer les détails personnels des
   anciennes versions de ce document ; le code de chaque commit est inchangé.
   Document refondu en cahier des charges.
+- **2026-11-11 (suite)** — Messages de commit au format du projet
+  d'origine, sans numéro d'issue. Dossier des réglages : aucun lien ne mène
+  au dossier principal de l'app ; le bouton ouvre `recharged.ini`
+  (`ce35205`). Notices de licence de 64 crates Rust dans l'app (`21175a3`).
+  Revue (`83b27b6`). Contrôle macOS dédié retiré (`76aabcc`). Simulateur
+  Xcode essayé en local, sans changement du dépôt : l'app compile et
+  démarre. iPad Pro M5 validé.
+- **2026-11-12** — Vibration à chaque appui (`6be3d5f`) et vibrations du jeu
+  dans l'iPhone par Core Haptics (`478eba0`). Disque GameCube : sélecteur
+  ouvert seulement par « Choose image… » (`42c58f1`). « Mouse pointer »
+  masqué pour l'écran tactile (`d0ca827`). Repli sur l'écran tactile quand
+  aucune manette configurée n'est là (`40b53c5`). Retour au launcher sans
+  fermer l'app abandonné.
 
 ## 11. Suivi des travaux
 
