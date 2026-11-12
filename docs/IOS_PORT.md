@@ -440,8 +440,8 @@ gestion de l'appareil.
 ## 8. Reste à faire
 
 - Vérifier F17 (disque GameCube).
-- Essais sur iPad (zone sûre, contrôles) et sur d'autres iPhone (F16), dont
-  un modèle à 3 Go (N3).
+- Essais sur d'autres iPhone (F16), dont un modèle à 3 Go (N3) ; marges de
+  la zone sûre de l'iPad à relever.
 - Confort : vibration à l'appui.
 - Retour au launcher sans fermer l'app (difficile, § 3.3).
 - Pull request éventuelle (§ 9).
