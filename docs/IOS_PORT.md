@@ -77,7 +77,7 @@ essayé), **À faire**, **Abandonné**.
 | F5 | Importer une image disque depuis n'importe où (sélecteur d'iOS) | Validé |
 | F6 | Les boutons de dossier ouvrent le bon dossier dans Fichiers | Validé pour `game`, `logs`, `texture_packs` ; dossier de `recharged.ini` : ouvre `recharged.ini` (limite d'iOS acceptée, § 5) |
 | F7 | Launcher utilisable au doigt (défilement avec inertie) | Validé |
-| F8 | Launcher dans la zone sûre de l'écran | Validé (iPhone Duo ; iPad Pro M5 à l'œil, marges non relevées) |
+| F8 | Launcher dans la zone sûre de l'écran | Validé (iPhone Duo, iPad Pro M5 ; les marges sont lues sur l'appareil) |
 | F9 | Réglages sans effet sur iOS masqués dans le launcher | Validé |
 | F10 | Contrôles tactiles couvrant tous les boutons utiles de la Wiimote et du Nunchuk | Validé (iPhone Duo, iPad Pro M5) |
 | F11 | Pointeur de la Wiimote au doigt | Validé |
@@ -456,13 +456,12 @@ gestion de l'appareil.
   d'accueil).
 - **iPad Pro M5** : validé : affichage aux bonnes dimensions, choix du jeu,
   contrôles tactiles, DualSense (les contrôles tactiles disparaissent quand
-  elle joue). Marges de la zone sûre non relevées (journal, ligne « Screen »).
+  elle joue).
 - Manette **DualSense** : reconnue, le jeu répond.
 
 ## 8. Reste à faire
 
-- Essais sur d'autres iPhone (F16), dont un modèle à 3 Go (N3) ; marges de
-  la zone sûre de l'iPad à relever.
+- Essais sur d'autres iPhone (F16), dont un modèle à 3 Go (N3).
 - Pull request éventuelle (§ 9).
 - À la fin du portage : regrouper l'historique de `ios-port` en un commit
   par fonctionnalité (compilation iOS, fichiers dans Documents, plein écran,
