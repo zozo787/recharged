@@ -462,6 +462,11 @@ gestion de l'appareil.
 - Essayer les vibrations (F18, F19) sur l'iPhone.
 - Retour au launcher sans fermer l'app (difficile, § 3.3).
 - Pull request éventuelle (§ 9).
+- À la fin du portage : regrouper l'historique de `ios-port` en un commit
+  par fonctionnalité (compilation iOS, fichiers dans Documents, plein écran,
+  launcher tactile, contrôles tactiles, éditeur de disposition, vibrations,
+  fichiers et dossiers, cahier des charges), au-dessus de la version de base,
+  par un push forcé ; code final identique, identifiants mis à jour ici.
 
 ## 9. Contribution au projet d'origine
 
