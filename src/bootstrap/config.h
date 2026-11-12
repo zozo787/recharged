@@ -113,6 +113,9 @@ struct Settings
     std::string touch_layout;
     // controls.touch_opacity: the on-screen controls' visibility, 20-100 %.
     int touch_opacity = 100;
+    // controls.touch_haptics: a light vibration when an on-screen control is
+    // pressed (on devices with a Taptic Engine).
+    bool touch_haptics = true;
 #else
     std::array<std::string, 4> players{"keyboard", "off", "off", "off"};
 #endif

@@ -344,8 +344,11 @@ add_library(charged_original_game_host OBJECT
     src/platform/os.cpp src/platform/host_metadata.cpp src/platform/string_format.cpp
     src/platform/report.cpp src/platform/thread.cpp src/platform/os_version.cpp)
 if(MSCHARGED_IOS)
-    # The on-screen touch controls and their layout (iOS only).
-    target_sources(charged_original_game_host PRIVATE src/runtime/touch_controls.cpp)
+    # The on-screen touch controls and their layout, and the Taptic Engine's
+    # tap when one is pressed (Objective-C++, ARC; iOS only).
+    target_sources(charged_original_game_host PRIVATE src/runtime/touch_controls.cpp src/runtime/touch_haptics.mm)
+    set_source_files_properties(src/runtime/touch_haptics.mm PROPERTIES COMPILE_OPTIONS -fobjc-arc)
+    target_link_libraries(charged_original_game_host PUBLIC "-framework UIKit")
 endif()
 target_compile_features(charged_original_game_host PRIVATE cxx_std_20)
 target_include_directories(charged_original_game_host BEFORE PRIVATE "${MSCHARGED_AURORA_PREPARED}/include")

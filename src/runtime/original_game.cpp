@@ -785,7 +785,7 @@ int mscharged::RunOriginalGame(int argc, char** argv,
         // owner, which gives that player's channel to their virtual gamepad.
         std::optional<mscharged::runtime::TouchControls> touchControls;
         if(nativeSend && players.touch>=0) {
-            touchControls.emplace(launch.settings.touch_layout,launch.settings.touch_opacity); // the launcher's layout editor
+            touchControls.emplace(launch.settings.touch_layout,launch.settings.touch_opacity,launch.settings.touch_haptics); // the launcher's layout editor
             players.touch_id=touchControls->JoystickId();
         }
 #endif

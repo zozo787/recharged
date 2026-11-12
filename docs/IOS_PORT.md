@@ -87,6 +87,7 @@ essayé), **À faire**, **Abandonné**.
 | F15 | Jeu fluide (60 FPS) sur l'appareil de test | Validé (120 FPS possible) |
 | F16 | Fonctionne sur les autres iPhone et iPad sous iOS 18+ | iPad Pro M5 validé ; autres iPhone à tester |
 | F17 | Disque GameCube de l'option Super Team importable | Fait (même sélecteur que F5) |
+| F18 | Vibration légère à chaque appui sur un contrôle tactile, désactivable | Fait (à essayer sur iPhone ; sans effet sur iPad, sans Taptic Engine) |
 
 ### 3.2 Non fonctionnelles
 
@@ -259,10 +260,17 @@ essayé), **À faire**, **Abandonné**.
   Format : `controls.touch_layout = a:rb,-200,-180,100 | …` ; vide = défaut ;
   une valeur illisible est ignorée.
 - **Éditeur** (launcher, plein écran) : glisser pour déplacer, toucher pour
-  sélectionner puis − / + pour la taille, curseur Opacity, Reset, Cancel,
-  Save.
+  sélectionner puis − / + pour la taille, curseur Opacity, interrupteur
+  Vibration, Reset, Cancel, Save.
 - **Opacité** : `controls.touch_opacity` 20-100 %, appliquée à tous les
   contrôles (pas à la fenêtre de confirmation).
+- **Vibration** : `controls.touch_haptics` (activée par défaut, interrupteur
+  « Vibration » de l'éditeur ; Reset la réactive). Un léger « tap » du Taptic
+  Engine (`UIImpactFeedbackGenerator`, style léger,
+  `src/runtime/touch_haptics.mm`, Objective-C++, joué sur le fil principal)
+  quand un bouton passe de relâché à appuyé (un seul par image, pas pendant
+  l'appui) et à l'ouverture de « Quitter le jeu ? ». Rien sur les appareils
+  sans Taptic Engine (iPad).
 - `SDL_HINT_TOUCH_MOUSE_EVENTS=0` pendant le jeu, sinon la Wiimote
   clavier-souris lirait aussi les touchers.
 - Journal : « Touch controls: on / default|custom layout, N % opacity /
@@ -282,6 +290,7 @@ masqué sur iOS et jamais armé.
 | `controls.player1-4` | ajoute `touch` | joueur 1 = `touch` |
 | `controls.touch_layout` | voir § 4.6 | vide (défaut) |
 | `controls.touch_opacity` | 20-100 | 100 |
+| `controls.touch_haptics` | `true` / `false` | `true` |
 | `display.antialiasing` | inchangé | `off` |
 | `display.resolution` | inchangé | `window` |
 
@@ -442,7 +451,7 @@ gestion de l'appareil.
 - Vérifier F17 (disque GameCube).
 - Essais sur d'autres iPhone (F16), dont un modèle à 3 Go (N3) ; marges de
   la zone sûre de l'iPad à relever.
-- Confort : vibration à l'appui.
+- Essayer la vibration (F18) sur l'iPhone.
 - Retour au launcher sans fermer l'app (difficile, § 3.3).
 - Pull request éventuelle (§ 9).
 
@@ -504,3 +513,4 @@ renommés au format du projet le même jour).
 | L17 | 11-11 | Liens vers Fichiers au format d'iOS (`shareddocuments:///var/mobile/…/`, « / » final) pour les sous-dossiers. Dossier principal de l'app : lien de dossier avec ou sans « / » final (`dd04a78`) sans effet, navigateur de documents d'iOS (`ffcd6b5`, `86413bf`) rouvert sur son dernier dossier, liste dans le launcher (`5a61338`) qui n'y emmène pas ; retenu : lien vers `recharged.ini` (`ce35205`), qui ouvre le fichier de réglages | `cd181e6` `3bc3a9a` `93d6cbb` `ffcd6b5` `86413bf` `5a61338` `dd04a78` `ce35205` | Appareil : `game`, `logs`, `texture_packs` s'ouvrent ; `recharged.ini` s'ouvre, le dossier principal non (limite d'iOS acceptée) | Terminé |
 | L18 | 11-11 | Documentation publique : historique réécrit sans détails personnels, « iPhone Duo » dans les commentaires, document refondu en cahier des charges | `23770ca` `44b1cd4` `baec666` | — | Terminé |
 | L19 | 11-11 | Notices de licence de chaque crate Rust dans l'app (exigence N4), comme les paquets de bureau ; nombre de crates couvertes affiché au contrôle de la CI | `21175a3` | CI : 64 crates couvertes, `.ipa` de 18,4 à 18,8 Mo | Terminé |
+| L20 | 11-12 | Vibration légère à chaque appui sur un contrôle tactile (exigence F18), interrupteur dans l'éditeur | + vibration | À essayer sur appareil | En cours |

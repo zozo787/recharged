@@ -44,8 +44,10 @@ public:
     // Turns off SDL's mouse events from touches (they would also be read as
     // the keyboard-and-mouse Remote's pointer and buttons) until destroyed.
     // `layout`: controls.touch_layout (bootstrap/touch_layout.h); `opacity`:
-    // controls.touch_opacity, in percent of the controls' default look.
-    TouchControls(const std::string& layout, int opacity);
+    // controls.touch_opacity, in percent of the controls' default look;
+    // `haptics`: controls.touch_haptics, a light vibration on each press
+    // (runtime/touch_haptics.h).
+    TouchControls(const std::string& layout, int opacity, bool haptics);
     ~TouchControls();
     TouchControls(const TouchControls&) = delete;
     TouchControls& operator=(const TouchControls&) = delete;
@@ -95,6 +97,7 @@ private:
 
     TouchPlacements placements_;
     float opacity_ = 1.0f;
+    bool haptics_ = true;
     float width_ = 0, height_ = 0;
     std::array<TouchCircle, ControlCount> buttons_{};
     TouchRect stickZone_{}; // where a finger that lands takes the stick

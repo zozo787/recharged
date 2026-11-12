@@ -6508,13 +6508,15 @@ private:
     // Over the whole launcher, the on-screen controls where the game draws
     // them (bootstrap/touch_layout.h; the screen is the game's). A finger
     // drags a control to move it and selects it for the size buttons; the
-    // slider sets their opacity; Reset puts the default layout and opacity
-    // back; Save writes controls.touch_layout and controls.touch_opacity.
+    // slider sets their opacity and the switch their vibration; Reset puts
+    // the defaults back; Save writes controls.touch_layout,
+    // controls.touch_opacity and controls.touch_haptics.
     void OpenTouchLayout()
     {
         touch_layout_open_ = true;
         touch_edit_ = ParseTouchLayout(draft_.touch_layout);
         touch_opacity_edit_ = draft_.touch_opacity;
+        touch_haptics_edit_ = draft_.touch_haptics;
         touch_selected_ = touch_drag_ = -1;
     }
 
@@ -6524,10 +6526,12 @@ private:
         touch_selected_ = touch_drag_ = -1;
         if (!save) return;
         const auto layout = FormatTouchLayout(touch_edit_);
-        if (layout != draft_.touch_layout || touch_opacity_edit_ != draft_.touch_opacity)
+        if (layout != draft_.touch_layout || touch_opacity_edit_ != draft_.touch_opacity
+            || touch_haptics_edit_ != draft_.touch_haptics)
         {
             draft_.touch_layout = layout;
             draft_.touch_opacity = touch_opacity_edit_;
+            draft_.touch_haptics = touch_haptics_edit_;
             dirty_ = true;
         }
         if (dirty_ && config_ok_) Save();
@@ -6555,7 +6559,7 @@ private:
         auto* draw = ImGui::GetWindowDrawList();
 
         // The panel in the middle, where the game's picture is, not its controls.
-        const float panel_w = std::min(Dp(420), w - Dp(32)), panel_h = Dp(258);
+        const float panel_w = std::min(Dp(420), w - Dp(32)), panel_h = Dp(302);
         const ImVec2 panel_min{(w - panel_w) * 0.5f, (h - panel_h) * 0.5f};
         const ImVec2 panel_max{panel_min.x + panel_w, panel_min.y + panel_h};
         const ImVec2 mouse = io.MousePos;
@@ -6699,14 +6703,22 @@ private:
         ImGui::SetCursorScreenPos({slider_x, opacity_y + (Dp(34) - ImGui::GetFrameHeight()) * 0.5f});
         PercentSlider("##touch_opacity", &touch_opacity_edit_, panel_max.x - pad - slider_x, nullptr, kMinTouchOpacity,
                       kMaxTouchOpacity);
+        // A light vibration on each press (devices with a Taptic Engine).
+        const float haptics_y = opacity_y + Dp(44);
+        ImGui::SetCursorScreenPos({panel_min.x + pad, haptics_y + Dp(8)});
+        TextColored(fonts.body, color::text, "Vibration");
+        ImGui::SetCursorScreenPos({panel_max.x - pad - Dp(48), haptics_y + Dp(3)});
+        Toggle("##touch_haptics", &touch_haptics_edit_);
         const float buttons_y = panel_max.y - pad - Dp(40);
         const float gap = Dp(10), each = (panel_w - 2 * pad - 2 * gap) / 3;
         ImGui::SetCursorScreenPos({panel_min.x + pad, buttons_y});
-        const bool changed = touch_edit_ != DefaultTouchPlacements() || touch_opacity_edit_ != kMaxTouchOpacity;
+        const bool changed = touch_edit_ != DefaultTouchPlacements() || touch_opacity_edit_ != kMaxTouchOpacity
+            || !touch_haptics_edit_;
         if (SecondaryButton("##touch_reset", "Reset", {each, Dp(40)}, changed, Icon::Refresh))
         {
             touch_edit_ = DefaultTouchPlacements();
             touch_opacity_edit_ = kMaxTouchOpacity;
+            touch_haptics_edit_ = true;
             touch_selected_ = touch_drag_ = -1;
         }
         ImGui::SetCursorScreenPos({panel_min.x + pad + each + gap, buttons_y});
@@ -9325,6 +9337,7 @@ private:
     bool touch_layout_open_ = false;
     TouchPlacements touch_edit_{};
     int touch_opacity_edit_ = 100;
+    bool touch_haptics_edit_ = true;
     int touch_selected_ = -1, touch_drag_ = -1;
     ImVec2 touch_grab_{};
 #endif

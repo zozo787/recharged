@@ -1,5 +1,7 @@
 #include "runtime/touch_controls.h"
 
+#include "runtime/touch_haptics.h"
+
 #include "platform/session_log.h"
 
 #include <SDL3/SDL_gamepad.h>
@@ -82,9 +84,10 @@ void Log(const char* format, ...)
 }
 } // namespace
 
-TouchControls::TouchControls(const std::string& layout, int opacity)
+TouchControls::TouchControls(const std::string& layout, int opacity, bool haptics)
     : placements_(ParseTouchLayout(layout)),
-      opacity_(float(std::clamp(opacity, kMinTouchOpacity, kMaxTouchOpacity)) / 100.0f)
+      opacity_(float(std::clamp(opacity, kMinTouchOpacity, kMaxTouchOpacity)) / 100.0f),
+      haptics_(haptics)
 {
     if (const char* hint = SDL_GetHint(SDL_HINT_TOUCH_MOUSE_EVENTS)) {
         hadHint_ = true;
@@ -96,7 +99,8 @@ TouchControls::TouchControls(const std::string& layout, int opacity)
     gamepads_ = SDL_InitSubSystem(SDL_INIT_GAMEPAD);
     watching_ = SDL_AddEventWatch(Watch, this);
     Log(watching_ ? "on" : "no event watch: %s", SDL_GetError());
-    Log("%s layout, %d %% opacity", layout.empty() ? "default" : "custom", int(std::lround(opacity_ * 100)));
+    Log("%s layout, %d %% opacity, vibration %s", layout.empty() ? "default" : "custom",
+        int(std::lround(opacity_ * 100)), haptics_ ? "on" : "off");
     // Now, before the input owner sets up the players: the touch player's
     // channel goes to this virtual gamepad's id (platform/hardware_owner.cpp).
     Attach();
@@ -381,6 +385,7 @@ void TouchControls::Service(float width, float height)
     if (pressed[Quit] && !quitWasPressed_ && !confirming_) {
         confirming_ = true;
         ++revision_;
+        if (haptics_) TouchHapticTap();
     }
     quitWasPressed_ = pressed[Quit];
     pressed[Quit] = false;
@@ -400,6 +405,13 @@ void TouchControls::Service(float width, float height)
     if (pressed != pressed_ || stickActive != stickActive_ || knobX != knobX_ || knobY != knobY_
         || stickX != stickX_ || stickY != stickY_)
         ++revision_;
+    // One light tap for the controls pressed in this frame (not those held).
+    if (haptics_)
+        for (int n = 0; n < ControlCount; ++n)
+            if (pressed[n] && !pressed_[n]) {
+                TouchHapticTap();
+                break;
+            }
     pressed_ = pressed;
     stickActive_ = stickActive;
     stickX_ = stickX, stickY_ = stickY, knobX_ = knobX, knobY_ = knobY;
