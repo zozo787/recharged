@@ -148,6 +148,10 @@ void Service() {
 }
 
 namespace mscharged::platform {
+namespace {
+// iOS: whether the touch controls play (NativeTouchControlsPlay).
+bool touch_controls_play = false;
+} // namespace
 void RetainNativeHardwareWindowClose(SDL_Window* window) {
     const auto id = window ? SDL_GetWindowID(window) : 0;
     if (!id || SDL_GetWindowFromID(id) != window)
@@ -288,7 +292,10 @@ void InitializeNativeHardwareInput(SDL_Window* window, WpadSDLSettings settings,
             if (players.touch >= 0) by_channel[players.touch] = &players.touch;
             int next = 0;
             for (auto* channel : by_channel) if (channel) *channel = next++;
-            if (!next) {
+            if (!next && players.touch_id) {
+                players.touch = 0;
+                SDL_Log("No configured controller is connected: the touch screen is player 1");
+            } else if (!next) {
                 players.keyboard = 0;
                 SDL_Log("No configured controller is connected: keyboard & mouse is player 1");
             }
@@ -316,12 +323,13 @@ void InitializeNativeHardwareInput(SDL_Window* window, WpadSDLSettings settings,
         desktop.gamepad_channels = players.gamepads;
         // The touch controls take a gamepad slot no configured gamepad uses
         // (the slot's profile gives their buttons), kept for their own id.
+        // Standing by (no player), their id only keeps them out of the slots.
+        desktop.touch_id = players.touch_id;
         if (players.touch >= 0)
             for (int slot = 3; slot >= 0; --slot)
                 if (desktop.gamepad_channels[slot] < 0) {
                     desktop.gamepad_channels[slot] = players.touch;
                     desktop.touch_slot = slot;
-                    desktop.touch_id = players.touch_id;
                     break;
                 }
         desktop.gamepad_players = desktop.gamepads =
@@ -331,6 +339,7 @@ void InitializeNativeHardwareInput(SDL_Window* window, WpadSDLSettings settings,
             if (channel >= 0) reserved |= 1u << channel;
         SetNativeWpadReservedChannels(reserved);
     }
+    touch_controls_play = players.touch >= 0;
     try { InitializeDesktopWpad(window, desktop); }
     catch (...) { ShutdownWiimoteHid(); throw; }
     try { InitializeNativeAlarms(); }
@@ -380,6 +389,7 @@ void InitializeNativeHardwareInput(SDL_Window* window, WpadSDLSettings settings,
 }
 
 void ServiceNativeHardwareInput() { Service(); }
+bool NativeTouchControlsPlay() { return touch_controls_play; }
 
 void InitializeNativeHardwareOwner(SDL_Window* window, WpadSDLSettings settings) {
     { std::lock_guard lock(State().latch);

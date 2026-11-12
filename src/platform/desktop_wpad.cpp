@@ -656,8 +656,11 @@ void ServiceDesktopWpad() {
             const auto vendor = SDL_GetGamepadVendorForID(ids[n]), product = SDL_GetGamepadProductForID(ids[n]);
             if (vendor == 0x057e && (product == 0x0306 || product == 0x0330)) continue;
             // The touch controls' virtual gamepad has its own slot, which no
-            // other pad takes (iOS; see DesktopWpadSettings::touch_slot).
-            const bool touch = state.settings.touch_slot >= 0 && ids[n] == SDL_JoystickID(state.settings.touch_id);
+            // other pad takes (iOS; see DesktopWpadSettings::touch_slot); it
+            // takes none while it stands by (no touch player).
+            const bool touch_pad = state.settings.touch_id && ids[n] == SDL_JoystickID(state.settings.touch_id);
+            if (touch_pad && state.settings.touch_slot < 0) continue;
+            const bool touch = touch_pad && state.settings.touch_slot >= 0;
             std::unique_ptr<Device>* slot = nullptr;
             int index = 0;
             for (; index < int(state.pads.size()); ++index)

@@ -261,6 +261,14 @@ essayé), **À faire**, **Abandonné**.
   retirée comme absente. Une manette physique sans emplacement prend celui
   du tactile : les contrôles se masquent et relâchent tout, puis reviennent
   quand elle part.
+- **Repli sur l'écran tactile** : les contrôles tactiles sont créés à chaque
+  partie, même si personne ne les a choisis. Si aucune manette configurée
+  n'est connectée au lancement, l'écran tactile devient le joueur 1, à la
+  place du clavier et de la souris d'origine (un iPhone n'en a pas) ;
+  sinon ils sont retirés (`NativeTouchControlsPlay`, « Touch controls: not
+  playing, removed »). En attente, leur manette virtuelle ne prend aucun
+  emplacement (`desktop_wpad.cpp`). Le launcher l'annonce (« With nobody
+  left, the touch screen plays as player 1 », `PredictLineup`).
 - **Disposition** (`src/bootstrap/touch_layout.{h,cpp}`, C++17, partagé
   launcher/jeu, iOS seulement) : chaque contrôle (A…croix, D-pad, stick) est
   ancré au bord le plus proche ou à la ligne du centre ; décalage en
@@ -386,6 +394,10 @@ apparentées).
   Wiimote virtuelle créée par `desktop_wpad.cpp` pour chaque manette qui
   joue ; virtuelle, elle ne masque pas les contrôles tactiles.
 - **Joueurs en ligne indisponibles** → libcurl absent sur iOS.
+- **Joueur 1 = manette éteinte au lancement** → la règle d'origine donnait le
+  joueur 1 au clavier et à la souris, absents d'un iPhone, et les contrôles
+  tactiles n'existaient pas : partie sans commandes ni croix pour quitter.
+  Repli sur l'écran tactile (§ 4.6).
 - **« Run workflow » absent** pour un workflow propre à `ios-port` → GitHub ne
   l'affiche que pour les workflows de la branche par défaut (`stable`).
 - **Envoi de l'`.ipa` en échec** (« Unexpected token '<', "<!DOCTYPE "… is
@@ -533,3 +545,4 @@ renommés au format du projet le même jour).
 | L20 | 11-12 | Vibration légère à chaque appui sur un contrôle tactile (F18), puis vibrations du jeu jouées par l'iPhone avec l'écran tactile (F19) ; carte Rumble adaptée à iOS, interrupteur de l'éditeur renommé « Vibrate on press » | `6be3d5f` `478eba0` | Appareil : tap et vibrations du jeu validés, réalistes | Terminé |
 | L21 | 11-12 | Disque GameCube (Super Team) : sur iOS, cocher l'option n'ouvre plus le sélecteur, seul « Choose image… » le fait | `42c58f1` | Appareil : correctif et chargement de l'image validés | Terminé |
 | L22 | 11-12 | « Mouse pointer » masqué quand le joueur 1 est l'écran tactile, où il ne change rien (masqué aussi pour « Keyboard & mouse », comme à l'origine : la souris y pointe déjà) | `d0ca827` | Appareil : masqué avec Touch screen ; reste à le voir réapparaître avec une manette | En cours |
+| L23 | 11-12 | Repli sur l'écran tactile quand aucune manette configurée n'est là au lancement (au lieu du clavier et de la souris), texte du launcher adapté | + repli tactile | À essayer sur appareil (joueur 1 = Gamepad, DualSense éteinte) | En cours |

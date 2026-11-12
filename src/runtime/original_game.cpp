@@ -783,14 +783,23 @@ int mscharged::RunOriginalGame(int argc, char** argv,
         // iOS: a stick and buttons on the screen for the player who chose the
         // touch screen (runtime/touch_controls.h). Created before the input
         // owner, which gives that player's channel to their virtual gamepad.
+        // Made even when nobody chose them: they stand in as player 1 when no
+        // configured controller is connected (an iPhone has no keyboard and
+        // mouse to fall back on), and go once the input owner has decided.
         std::optional<mscharged::runtime::TouchControls> touchControls;
-        if(nativeSend && players.touch>=0) {
+        if(nativeSend) {
             touchControls.emplace(launch.settings.touch_layout,launch.settings.touch_opacity,launch.settings.touch_haptics); // the launcher's layout editor
             players.touch_id=touchControls->JoystickId();
         }
 #endif
         mscharged::platform::InitializeNativeHardwareInput(host.window,wpad,
             mscharged::platform::GetNativeSTMInput(), desktop, players);
+#if defined(MSCHARGED_PLATFORM_IOS)
+        if(touchControls && !mscharged::platform::NativeTouchControlsPlay()) {
+            touchControls.reset();
+            mscharged::platform::SessionLogLine("Touch controls: not playing, removed");
+        }
+#endif
         {
             const auto& s=launch.settings;
             const std::string line="Wii Remote settings: sensor bar "+s.sensor_bar+", sensitivity "

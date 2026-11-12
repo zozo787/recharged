@@ -10,7 +10,8 @@
 // Who plays if the game starts now, as the launcher shows it. It follows the
 // game at startup (InitializeNativeHardwareInput, platform/hardware_owner.cpp):
 // controllers that are not connected drop out and the others close up in
-// order; with nobody left keyboard & mouse is player 1. Independent of
+// order; with nobody left keyboard & mouse is player 1 (on iOS the touch
+// screen, as an iPhone has no keyboard and mouse). Independent of
 // SDL/ImGui so it can be unit tested.
 namespace mscharged::launcher
 {
@@ -49,7 +50,11 @@ PlayerLineup PredictLineup(const std::array<std::string, 4>& players, RemoteConn
     }
     for (std::size_t n = 0; n < 4; ++n)
         if (players[n] != "off" && !lineup.missing[n]) lineup.playing.push_back(players[n]);
+#if defined(MSCHARGED_PLATFORM_IOS)
+    if (dropped && lineup.playing.empty()) lineup.playing.push_back("touch");
+#else
     if (dropped && lineup.playing.empty()) lineup.playing.push_back("keyboard");
+#endif
     return lineup;
 }
 

@@ -47,6 +47,9 @@ struct NativePlayers {
     // iOS: WPAD channel of the on-screen touch controls (controls.playerN =
     // touch), or -1, and their virtual gamepad's SDL joystick id (0: none).
     // Always connected: they never drop out and are not counted as a gamepad.
+    // With an id but no player, they stand by: when no configured controller
+    // is connected at start they play as player 1, in place of keyboard &
+    // mouse (an iPhone has neither).
     int touch = -1;
     std::uint32_t touch_id = 0;
     // controls.mouse_pointer: the mouse also points for player 1 when that
@@ -56,6 +59,9 @@ struct NativePlayers {
 void InitializeNativeHardwareInput(SDL_Window* window, WpadSDLSettings settings,
     StmInput borrowed_stm, DesktopWpadSettings desktop = {}, NativePlayers players = {});
 void ServiceNativeHardwareInput();
+// Whether the touch controls play (configured, or standing in for missing
+// controllers), as InitializeNativeHardwareInput decided.
+bool NativeTouchControlsPlay();
 void ShutdownNativeHardwareInput();
 
 // After native SDL/SDK host setup, before loading the original source module.

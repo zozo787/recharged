@@ -6198,7 +6198,8 @@ private:
     // controls.player1-4: keyboard & mouse, a Wii Remote (in a DolphinBar
     // slot or paired over Bluetooth), a gamepad or off. Players fill in order
     // and each device plays once. Controllers missing when the game starts
-    // drop out; with nobody left keyboard & mouse is player 1, alone.
+    // drop out; with nobody left keyboard & mouse is player 1, alone (on iOS
+    // the touch screen).
     void PlayersCard()
     {
         const auto& status = wii_status_;
@@ -6373,8 +6374,13 @@ private:
         if (std::any_of(players.begin(), players.end(),
                         [](const std::string& device) { return device != "keyboard" && device != "off"; }))
         {
+#if defined(MSCHARGED_PLATFORM_IOS)
+            const std::string rule = "Controllers that are not connected when the game starts drop out. With nobody "
+                                     "left, the touch screen plays as player 1.";
+#else
             const std::string rule = "Controllers that are not connected when the game starts drop out. With nobody "
                                      "left, keyboard & mouse plays as player 1.";
+#endif
             const auto& fonts = CurrentFonts();
             const float width = ImGui::GetContentRegionAvail().x;
             const auto height = [&](const std::string& text) {
