@@ -7993,7 +7993,10 @@ private:
         if (Toggle("##tweak_super_team", &draft_.tweaks[index]))
         {
             dirty_ = true;
+#if !defined(MSCHARGED_PLATFORM_IOS)
+            // iOS: no picker on the switch; "Choose image..." below opens it.
             if (draft_.tweaks[index] && draft_.gamecube_disc.empty()) BrowseGameCubeDisc();
+#endif
         }
         if (!draft_.tweaks[index]) return;
         BeginSubRows();

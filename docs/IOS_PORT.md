@@ -86,7 +86,7 @@ essayé), **À faire**, **Abandonné**.
 | F14 | Quitter le jeu depuis l'écran tactile, avec confirmation | Validé (ferme l'app, § 5) |
 | F15 | Jeu fluide (60 FPS) sur l'appareil de test | Validé (120 FPS possible) |
 | F16 | Fonctionne sur les autres iPhone et iPad sous iOS 18+ | iPad Pro M5 validé ; autres iPhone à tester |
-| F17 | Disque GameCube de l'option Super Team importable | Fait (même sélecteur que F5) |
+| F17 | Disque GameCube de l'option Super Team importable | Validé (iPhone Duo ; sur iOS, le sélecteur ne s'ouvre qu'avec « Choose image… ») |
 | F18 | Vibration légère à chaque appui sur un contrôle tactile, désactivable | Validé (iPhone Duo ; sans effet sur iPad, sans Taptic Engine) |
 | F19 | Vibrations du jeu (rumble de la Wiimote) ressenties dans l'iPhone avec l'écran tactile | Validé (iPhone Duo : réalistes en jeu) |
 
@@ -456,7 +456,6 @@ gestion de l'appareil.
 
 ## 8. Reste à faire
 
-- Vérifier F17 (disque GameCube).
 - Essais sur d'autres iPhone (F16), dont un modèle à 3 Go (N3) ; marges de
   la zone sûre de l'iPad à relever.
 - Retour au launcher sans fermer l'app (difficile, § 3.3).
@@ -526,3 +525,4 @@ renommés au format du projet le même jour).
 | L18 | 11-11 | Documentation publique : historique réécrit sans détails personnels, « iPhone Duo » dans les commentaires, document refondu en cahier des charges | `23770ca` `44b1cd4` `baec666` | — | Terminé |
 | L19 | 11-11 | Notices de licence de chaque crate Rust dans l'app (exigence N4), comme les paquets de bureau ; nombre de crates couvertes affiché au contrôle de la CI | `21175a3` | CI : 64 crates couvertes, `.ipa` de 18,4 à 18,8 Mo | Terminé |
 | L20 | 11-12 | Vibration légère à chaque appui sur un contrôle tactile (F18), puis vibrations du jeu jouées par l'iPhone avec l'écran tactile (F19) ; carte Rumble adaptée à iOS, interrupteur de l'éditeur renommé « Vibrate on press » | `6be3d5f` `478eba0` | Appareil : tap et vibrations du jeu validés, réalistes | Terminé |
+| L21 | 11-12 | Disque GameCube (Super Team) : sur iOS, cocher l'option n'ouvre plus le sélecteur, seul « Choose image… » le fait (le chargement de l'image était déjà validé) | + sélecteur au bouton seulement | À essayer sur appareil | En cours |
