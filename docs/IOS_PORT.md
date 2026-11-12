@@ -109,8 +109,13 @@ essayé), **À faire**, **Abandonné**.
 - **Menu HOME** : non compilé dans les builds normaux du projet d'origine
   (§ 5). Pas de bouton HOME tactile tant qu'il ne l'active pas.
 - **Vraies Wiimotes** : Bluetooth classique inaccessible aux apps iOS.
-- **Retour au launcher sans fermer l'app** : iOS refuse la relance ; le
-  faire dans le même processus demanderait de remettre le jeu à zéro. Reporté.
+- **Retour au launcher sans fermer l'app** : abandonné. Le jeu (code
+  d'origine de la Wii) ne sait pas s'arrêter : Recharged termine le processus
+  (`TerminateProcessNow`) puis en relance un (`ReopenLauncher`), ce qu'iOS
+  refuse. Le faire dans le même processus demanderait d'arrêter ses fils,
+  libérer sa mémoire, remettre à zéro ses variables globales et le moteur
+  graphique. Alternative possible si besoin : un « Reset » vers l'écran titre
+  du jeu (comme le bouton Reset de la Wii), sans repasser par le launcher.
 - **Simulateur Xcode** (essayer d'autres tailles d'écran sur un Mac) : reporté.
 
 ## 4. Conception
@@ -458,7 +463,6 @@ gestion de l'appareil.
 
 - Essais sur d'autres iPhone (F16), dont un modèle à 3 Go (N3) ; marges de
   la zone sûre de l'iPad à relever.
-- Retour au launcher sans fermer l'app (difficile, § 3.3).
 - Pull request éventuelle (§ 9).
 - À la fin du portage : regrouper l'historique de `ios-port` en un commit
   par fonctionnalité (compilation iOS, fichiers dans Documents, plein écran,
