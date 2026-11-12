@@ -226,7 +226,10 @@ essayé), **À faire**, **Abandonné**.
   couleur sous la marge, contenu décalé ; page et barre du bas avant les
   marges droite et basse ; l'illustration de la page Play va jusqu'au bord.
 - **Masqué sur iOS** : carte Screen, mises à jour, Discord, « Log window »,
-  carte Wii Remote, « Reopen after the game », imports Dolphin. Textes
+  carte Wii Remote, « Reopen after the game », imports Dolphin ; « Mouse
+  pointer » quand le joueur 1 est l'écran tactile (le doigt pointe toujours
+  comme souris ; la ligne reste pour une manette, utile avec une souris ou un
+  trackpad sur iPad). Textes
   « NATIVE PORT » et « natively on iPhone and iPad » ; paquet `ios`.
 - **Joueurs** : choix « Touch screen » (`controls.playerN = touch`, iOS
   seulement ; défaut joueur 1), avec le bouton de l'éditeur de disposition.
@@ -529,3 +532,4 @@ renommés au format du projet le même jour).
 | L19 | 11-11 | Notices de licence de chaque crate Rust dans l'app (exigence N4), comme les paquets de bureau ; nombre de crates couvertes affiché au contrôle de la CI | `21175a3` | CI : 64 crates couvertes, `.ipa` de 18,4 à 18,8 Mo | Terminé |
 | L20 | 11-12 | Vibration légère à chaque appui sur un contrôle tactile (F18), puis vibrations du jeu jouées par l'iPhone avec l'écran tactile (F19) ; carte Rumble adaptée à iOS, interrupteur de l'éditeur renommé « Vibrate on press » | `6be3d5f` `478eba0` | Appareil : tap et vibrations du jeu validés, réalistes | Terminé |
 | L21 | 11-12 | Disque GameCube (Super Team) : sur iOS, cocher l'option n'ouvre plus le sélecteur, seul « Choose image… » le fait | `42c58f1` | Appareil : correctif et chargement de l'image validés | Terminé |
+| L22 | 11-12 | « Mouse pointer » masqué quand le joueur 1 est l'écran tactile, où il ne change rien | + ligne masquée | À essayer sur appareil | En cours |

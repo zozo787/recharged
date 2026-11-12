@@ -6387,8 +6387,9 @@ private:
                                                 (note.empty() ? rule : note).c_str(), nullptr, width);
             ImGui::Dummy({width, block});
         }
-        // Single player on a Wii Remote or gamepad only.
-        if (players[0] != "keyboard" && players[1] == "off" && BeginRows("##mouse_rows"))
+        // Single player on a Wii Remote or gamepad only. Not for the touch
+        // screen (iOS): a finger points as the mouse whatever this says.
+        if (players[0] != "keyboard" && players[0] != "touch" && players[1] == "off" && BeginRows("##mouse_rows"))
         {
             Row("Mouse pointer", "The mouse also points for player 1: left click is A, right click is B. "
                 "The controller keeps working. Only when player 1 plays alone.");
