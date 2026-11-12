@@ -477,6 +477,13 @@ gestion de l'appareil.
 ## 8. Reste à faire
 
 - Essais sur d'autres iPhone (F16), dont un modèle à 3 Go (N3).
+- Piste : notification de nouvelle version (sans installation, impossible
+  sur iOS : app en lecture seule, signée, qui ne peut ni se remplacer ni se
+  relancer). Demanderait des versions iOS publiées (un paquet `ios-arm64`
+  joint aux releases), un accès réseau sur iOS (libcurl absent : passer par
+  `NSURLSession`), et une interface qui informe et donne le lien, sans
+  bouton « Installer ». Pour une pull request : mises à jour masquées,
+  signalées comme limite connue.
 - Pull request éventuelle (§ 9).
 - À la fin du portage : regrouper l'historique de `ios-port` en un commit
   par fonctionnalité (compilation iOS, fichiers dans Documents, plein écran,
