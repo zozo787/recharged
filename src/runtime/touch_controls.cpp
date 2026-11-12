@@ -99,7 +99,7 @@ TouchControls::TouchControls(const std::string& layout, int opacity, bool haptic
     gamepads_ = SDL_InitSubSystem(SDL_INIT_GAMEPAD);
     watching_ = SDL_AddEventWatch(Watch, this);
     Log(watching_ ? "on" : "no event watch: %s", SDL_GetError());
-    Log("%s layout, %d %% opacity, vibration %s", layout.empty() ? "default" : "custom",
+    Log("%s layout, %d %% opacity, vibrate on press %s", layout.empty() ? "default" : "custom",
         int(std::lround(opacity_ * 100)), haptics_ ? "on" : "off");
     // Now, before the input owner sets up the players: the touch player's
     // channel goes to this virtual gamepad's id (platform/hardware_owner.cpp).
@@ -168,6 +168,13 @@ void TouchControls::Attach()
     desc.button_mask = (1u << SDL_GAMEPAD_BUTTON_COUNT) - 1;
     desc.axis_mask = (1u << SDL_GAMEPAD_AXIS_COUNT) - 1;
     desc.name = "Recharged touch controls";
+    // The game's rumble reaches this gamepad as any other's (desktop_wpad.cpp,
+    // scaled by controls.rumble_strength, off with controls.rumble): the
+    // device's Taptic Engine plays it.
+    desc.Rumble = [](void*, Uint16 low, Uint16 high) {
+        TouchRumble(float(std::max(low, high)) / 65535.0f);
+        return true;
+    };
     id_ = SDL_AttachVirtualJoystick(&desc);
     if (!id_) {
         Log("no virtual gamepad: %s", SDL_GetError());
@@ -185,6 +192,7 @@ void TouchControls::Attach()
 
 void TouchControls::Detach()
 {
+    TouchRumble(0);
     if (joystick_) SDL_CloseJoystick(joystick_);
     if (id_) SDL_DetachVirtualJoystick(id_);
     joystick_ = nullptr;

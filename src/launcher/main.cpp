@@ -6421,6 +6421,13 @@ private:
         return std::any_of(draft_.players.begin(), draft_.players.end(),
                            [](const std::string& device) { return device.rfind("gamepad", 0) == 0; });
     }
+#if defined(MSCHARGED_PLATFORM_IOS)
+    bool TouchPlayer() const
+    {
+        return std::any_of(draft_.players.begin(), draft_.players.end(),
+                           [](const std::string& device) { return device == "touch"; });
+    }
+#endif
 
     // The Wii's Sensor Bar and Wii Remote settings. Shown from the settings,
     // not from what is connected right now: the card stays while remotes come
@@ -6474,11 +6481,24 @@ private:
         BeginCard("##rumble", "Rumble", nullptr, Icon::Gamepad);
         if (BeginRows("##rumble_rows"))
         {
+#if defined(MSCHARGED_PLATFORM_IOS)
+            // The touch screen's rumble is the device's own vibration
+            // (runtime/touch_haptics.h), at the gamepads' strength.
+            Row("Rumble", "The game's rumble, like the Wii's rumble setting: on gamepads, and on the iPhone itself "
+                          "with the touch screen.");
+            const bool strength = GamepadPlayer() || TouchPlayer();
+#else
             Row("Rumble", "The game's rumble on Wii Remotes and gamepads, like the Wii's rumble setting.");
+            const bool strength = GamepadPlayer();
+#endif
             if (Toggle("##rumble", &draft_.rumble)) dirty_ = true;
-            if (GamepadPlayer() || draft_.rumble_strength != defaults.rumble_strength)
+            if (strength || draft_.rumble_strength != defaults.rumble_strength)
             {
+#if defined(MSCHARGED_PLATFORM_IOS)
+                Row("Strength", "How strongly gamepads and the iPhone vibrate.");
+#else
                 Row("Gamepad strength", "How strongly gamepads rumble. A Wii Remote's motor is either on or off.");
+#endif
                 ImGui::BeginDisabled(!draft_.rumble);
                 if (PercentSlider("##rumble_strength", &draft_.rumble_strength, ImGui::GetContentRegionAvail().x, "Off"))
                     dirty_ = true;
@@ -6508,7 +6528,7 @@ private:
     // Over the whole launcher, the on-screen controls where the game draws
     // them (bootstrap/touch_layout.h; the screen is the game's). A finger
     // drags a control to move it and selects it for the size buttons; the
-    // slider sets their opacity and the switch their vibration; Reset puts
+    // slider sets their opacity and the switch their tap on press; Reset puts
     // the defaults back; Save writes controls.touch_layout,
     // controls.touch_opacity and controls.touch_haptics.
     void OpenTouchLayout()
@@ -6703,10 +6723,11 @@ private:
         ImGui::SetCursorScreenPos({slider_x, opacity_y + (Dp(34) - ImGui::GetFrameHeight()) * 0.5f});
         PercentSlider("##touch_opacity", &touch_opacity_edit_, panel_max.x - pad - slider_x, nullptr, kMinTouchOpacity,
                       kMaxTouchOpacity);
-        // A light vibration on each press (devices with a Taptic Engine).
+        // A light tap on each press (devices with a Taptic Engine); the
+        // game's own rumble is the Rumble setting.
         const float haptics_y = opacity_y + Dp(44);
         ImGui::SetCursorScreenPos({panel_min.x + pad, haptics_y + Dp(8)});
-        TextColored(fonts.body, color::text, "Vibration");
+        TextColored(fonts.body, color::text, "Vibrate on press");
         ImGui::SetCursorScreenPos({panel_max.x - pad - Dp(48), haptics_y + Dp(3)});
         Toggle("##touch_haptics", &touch_haptics_edit_);
         const float buttons_y = panel_max.y - pad - Dp(40);
