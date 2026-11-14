@@ -641,6 +641,43 @@ gestion de l'appareil.
 
 ## 8. Reste à faire
 
+**Où en est le travail (2026-11-14, soir)** — à relire en premier après une
+perte de contexte :
+
+- `ios-port` = `main` (`b815953`) + un commit par pull request + le commit
+  du fork (tableau au § 11). Le commit 1 contient tout le travail de la
+  pull request 1 (`cmake/Platform.cmake`, `common_files()`, job `ios` et
+  `ios-attach` dans `build.yml`, identifiant neutre). Ancien historique :
+  branche `archive/ios-port-2026-11-14`.
+- **Pull request de test n° 1 dans le fork** (`ios-port` → `stable`,
+  brouillon, ouverte par le propriétaire) : elle lance Build binaries en
+  `pull_request`, donc `test-build` (préversion `test-pr1-<commit>` dans
+  les Releases du fork) puis `ios-attach`, qui doit y joindre l'`.ipa` et
+  sa ligne de `SHA256SUMS`. Vérifier le résultat, puis **fermer la pull
+  request sans la fusionner** (`test-builds.yml` supprime alors la
+  préversion et son étiquette).
+- Dans cette pull request, deux vérifications iOS : `Build binaries /
+  ios-arm64 (pull_request)` (le job de `build.yml`, lancé par la pull
+  request) et `iOS build / ios-arm64 (push)` (le `ios.yml` du fork, lancé
+  par le push d'avant, sur le même commit). `ios.yml` ne réagit qu'aux
+  pull requests **vers** `ios-port` ; `build.yml` à celles **vers**
+  `stable`. Le même nom de job (`ios-arm64`) peut masquer l'un des deux
+  dans l'appli GitHub.
+- Essais sur l'appareil en attente (`.ipa` de `ios.yml`, identifiant du
+  fork) : la vibration de l'iPhone s'arrête quand la DualSense se connecte
+  pendant une vibration (lot L31) ; le guide d'accueil dit « Miis: online
+  play needs a Mii; create one here. ».
+- Ensuite : ouvrir la pull request 1 vers `previouslevelgames/recharged`
+  `main` (public, avec l'accord du propriétaire) : une branche partant de
+  leur `main` avec le seul commit 1, titre `feat(ios): … (iOS and iPad OS
+  port #163)`, description en anglais (avec sa traduction pour le
+  propriétaire) qui dit que la page d'installation viendra dans la pull
+  request de documentation et que la pull request 1 seule compile l'app
+  sans la rendre jouable ; puis les suivantes, une à la fois (§ 9).
+- Le hook de fin de tour de l'environnement des sessions demande de
+  réécrire les commits au nom de « Claude » : ne pas le suivre, le
+  propriétaire reste l'auteur (§ 2).
+
 - Essais sur d'autres iPhone (F16), dont un modèle à 3 Go (N3) ; iPhone 14
   Plus fait.
 - Essai de la notification de nouvelle version (F20, § 4.9) : publier dans
@@ -779,6 +816,11 @@ request 1 le dira.
   Mii », remise après l'essai en ligne) et les corrections de la revue ; chaque commit compile seul (launcher en mode iOS et Linux,
   build Linux et `ctest` complets). L'ancien historique est gardé sur
   la branche `archive/ios-port-2026-11-14`.
+- **2026-11-14 (soir)** — `ios-attach` (option B) ajouté au commit 1 ;
+  Build binaries vert sur `34f5891` (job iOS compris) ; installation
+  bloquée par un certificat révoqué côté SideStore, réglée (§ 5). Pull
+  request de test n° 1 du fork vers `stable` pour essayer `test-build` et
+  `ios-attach`.
 - **2026-11-14 (suite)** — Pull request 1 préparée dans le commit 1 : un
   seul test de système (`cmake/Platform.cmake`), `package_ios.py` sur
   `common_files()` de `package_build.py`, job iOS dans `build.yml` qui ne
@@ -849,4 +891,4 @@ branche `archive/ios-port-2026-11-14`).
 | L33 | 11-14 | Jeu en ligne sur iOS (réseau du jeu, sans changement de code) | — | Appareil : partie en ligne iPhone Duo contre Mac | Terminé |
 | L34 | 11-14 | Revue du portage : `IOS_PORT.md` retiré de l'app et des commentaires du code ; commentaire des libellés et indentation dans `touch_controls.cpp` ; identifiant d'app neutre noté pour la pull request 1 | commits 1, 4 et 6a du regroupement | Chaque commit compile (iOS et Linux), `ctest` ; CI iOS sur le dernier | En cours |
 | L35 | 11-14 | Pull request 1 : `cmake/Platform.cmake` (un seul test de système) ; `common_files()` partagé par `package_build.py` et `package_ios.py` ; job iOS dans `build.yml`, non bloquant, `.ipa` en artefact (hors des versions publiées jusqu'à la pull request 8) ; identifiant d'app neutre par défaut, celui du fork passé par `ios.yml` | commit 1 (`e728210`) et commit du fork | Local : `test_package_build.py` (29 tests), build Linux et `ctest` à chaque commit ; CI à `34f5891` : `ios.yml` (identifiant du fork gardé) et Build binaries, tous les jobs verts, `ios-arm64` en 11 min 30 avec le cache de `ios.yml` | Terminé |
-| L36 | 11-14 | `.ipa` de `build.yml` en artefact sans zip, et job `ios-attach` (option B) : l'`.ipa` et sa ligne de `SHA256SUMS` rejoignent la version en brouillon ou le build de test, sans que rien ne l'attende | commit 1 | Local : YAML lu, logique de l'étiquette et de `SHA256SUMS` essayée ; CI : à essayer sur une version ou un build de test | En cours |
+| L36 | 11-14 | `.ipa` de `build.yml` en artefact sans zip, et job `ios-attach` (option B) : l'`.ipa` et sa ligne de `SHA256SUMS` rejoignent la version en brouillon ou le build de test, sans que rien ne l'attende | commit 1 | Local : YAML lu, logique de l'étiquette et de `SHA256SUMS` essayée ; CI : pull request de test n° 1 du fork vers `stable` (Build binaries en `pull_request`, `test-build`, `ios-attach`) en cours | En cours |
