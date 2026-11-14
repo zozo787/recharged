@@ -349,12 +349,15 @@ tous les réglages dans `recharged.ini`).
   versions du fork (`MSCHARGED_BUILD_REPOSITORY`).
 - **Affichage** : le même que sur PC. Barre de la page Play (Release/Test,
   état, joueurs en ligne), carte Updates de la page Advanced (texte iOS),
-  fenêtre « UPDATE AVAILABLE » (version, notes de version, View on GitHub).
-  Sur iOS, `InstallBlocker` répond « An iOS app cannot replace itself. » :
-  la fenêtre affiche alors « Download the new .ipa and install it the way
-  you installed this one (SideStore, AltStore, Sideloadly...). » et son
-  bouton **Download** ouvre l'`.ipa` dans Safari (même mécanisme que pour
-  une copie de bureau qui ne peut pas se mettre à jour).
+  fenêtre « UPDATE AVAILABLE » (version, notes de version). Sur iOS,
+  `InstallBlocker` répond « An iOS app cannot replace itself. » : la
+  fenêtre affiche « Get the new .ipa from the release page and install it
+  the way you installed this one (SideStore, AltStore, Sideloadly...). »,
+  et son bouton **Open release page** ouvre la page GitHub de la version
+  (celle du dépôt dont vient la build : le projet d'origine pour ses
+  builds, le fork pour celles du fork), qui remplace « View on GitHub ».
+  Pas de lien direct vers l'`.ipa` : la page montre aussi les notes et les
+  autres fichiers.
 - **Mises à jour forcées** : jamais sur iOS (`EnforcedUpdates()` faux) ; une
   nouvelle version ouvre la fenêtre au démarrage. Le blocage du jeu en ligne
   d'une version officielle dépassée reste (`GatesOnline`).
@@ -551,7 +554,7 @@ gestion de l'appareil.
   le fork une version de test (étiquette `v1.1.8`, publiée : ni brouillon
   ni préversion, que la recherche ignore) avec un fichier `recharged-1.1.8-ios-arm64.ipa` ; au
   démarrage, l'app 1.1.7 doit ouvrir « UPDATE AVAILABLE / Version 1.1.8 »,
-  et Download ouvrir l'`.ipa`. Supprimer ensuite la version et son
+  et Open release page ouvrir la page de la version. Supprimer ensuite la version et son
   étiquette. Côté projet d'origine : joindre l'`.ipa` aux versions publiées.
 - Pull requests vers `main` du projet d'origine (§ 9).
 - À la fin du portage : regrouper l'historique de `ios-port` en un commit
@@ -680,4 +683,4 @@ renommés au format du projet le même jour).
 | L24 | 11-14 | Fusion de `main` du projet d'origine (1.1.7) dans `ios-port` : 3 conflits dans `src/launcher/main.cpp` (inclusions, `CurrentBuild()` déplacé dans `launcher/current_build.h` où le paquet `ios` est reporté, carte Updates réécrite et gardée masquée sur iOS) | `2704410` | CI : `.ipa` 1.1.7 ; Build binaries vert (Linux, Steam Deck, Windows, macOS) ; `ctest --preset debug` 61/61 ; appareil : la 1.1.7 tourne sur l'iPhone Duo | Terminé |
 | L25 | 11-14 | Libellés des contrôles tactiles en anglais, demandé pour les pull requests : « Tacle » → « Hit », « Changer » → « Swap » (noms déjà utilisés dans `controls.touch_layout`), « Quitter le jeu ? / L'application va se fermer. » → « Quit the game? / The app will close. », Annuler / Quitter → Cancel / Quit ; éditeur du launcher et journal (« Quit: … ») | `f09c27b` | Appareil : libellés dans leurs boutons, Cancel et Quit, éditeur | Terminé |
 | L26 | 11-14 | Guide d'accueil propre à iOS (`assets/launcher/welcome-ios.md`), mis par le paquet à la place du guide de bureau ; textes vérifiés contre le launcher actuel | `14af582` | À essayer sur l'appareil (ampoule à côté de Revert) | En cours |
-| L27 | 11-14 | Réseau sur iOS par NSURLSession (mises à jour, joueurs en ligne, rapports de match) ; paquets `.ipa` reconnus dans les versions publiées (test) ; barre et fenêtre des mises à jour comme sur PC, avec Download de l'`.ipa` au lieu de l'installation ; carte Updates de la page Advanced | ce commit | Linux : `ctest --preset debug` 61/61 ; appareil : version de test du fork à publier | En cours |
+| L27 | 11-14 | Réseau sur iOS par NSURLSession (mises à jour, joueurs en ligne, rapports de match) ; paquets `.ipa` reconnus dans les versions publiées (test) ; barre et fenêtre des mises à jour comme sur PC, avec la page de la version au lieu de l'installation ; carte Updates de la page Advanced | ce commit | Linux : `ctest --preset debug` 61/61 ; appareil : version de test du fork à publier | En cours |

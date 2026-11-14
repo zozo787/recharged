@@ -2167,8 +2167,8 @@ private:
         else if (!status.install_blocker.empty() && !busy)
         {
 #if defined(MSCHARGED_PLATFORM_IOS)
-            Callout(status.install_blocker + " Download the new .ipa and install it the way you installed this one "
-                    "(SideStore, AltStore, Sideloadly...).",
+            Callout(status.install_blocker + " Get the new .ipa from the release page and install it the way you "
+                    "installed this one (SideStore, AltStore, Sideloadly...).",
                     color::muted, Icon::Info);
 #else
             Callout(status.install_blocker + " Download the package and unpack it over this folder instead.",
@@ -2217,7 +2217,12 @@ private:
             const std::string page = offer.test && status.pull && !status.pull->page.empty() ? status.pull->page
                                                                                              : offer.page;
             const char* github = "View on GitHub";
-            if (!page.empty())
+#if defined(MSCHARGED_PLATFORM_IOS)
+            const bool github_link = false; // the release page is the action itself (below)
+#else
+            const bool github_link = !page.empty();
+#endif
+            if (github_link)
             {
                 if (GhostButton("update_github", github, {GhostWidth(github, Icon::GitHub), height}, true,
                                 Icon::GitHub))
@@ -2225,23 +2230,33 @@ private:
                 if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", page.c_str());
             }
             const char* action = nullptr;
+#if defined(MSCHARGED_PLATFORM_IOS)
+            // The release page, where the player picks up the .ipa.
+            const bool release_page = !page.empty();
+            if (release_page) action = "Open release page";
+#else
+            const bool release_page = false;
             if (status.install_blocker.empty())
                 action = status.state == State::InstallFailed ? "Try again"
                     : kind == OfferKind::Update               ? "Update now"
                                                               : "Switch now";
             else if (asset) action = "Download";
+#endif
             const char* later = "Later";
             const float later_width = GhostWidth(later, Icon::None);
-            const float action_width = action ? PrimaryWidth(action, Icon::Download) : 0.0f;
+            const float action_width = action ? PrimaryWidth(action, release_page ? Icon::GitHub : Icon::Download)
+                                              : 0.0f;
             align_right(later_width + (action ? Dp(10) + action_width : 0.0f));
             if (GhostButton("update_later", later, {later_width, height}) || CancelPressed())
                 DismissUpdateDialog();
             if (action)
             {
                 ImGui::SameLine(0, Dp(10));
-                if (PrimaryButton("update_now", action, {action_width, height}, true, Icon::Download))
+                if (PrimaryButton("update_now", action, {action_width, height}, true,
+                                  release_page ? Icon::GitHub : Icon::Download))
                 {
-                    if (status.install_blocker.empty())
+                    if (release_page) SDL_OpenURL(page.c_str());
+                    else if (status.install_blocker.empty())
                     {
                         // Its pull request is followed from now on, also after it is released.
                         if (offer.test && draft_.test_build != offer.pull_request)
