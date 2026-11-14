@@ -166,7 +166,9 @@ essayé), **À faire**, **Abandonné**.
 - **Info.plist** : iPhone et iPad, paysage, `UIRequiresFullScreen`, écran de
   lancement vide (résolution native), barre d'état masquée,
   `UIFileSharingEnabled` et `LSSupportsOpeningDocumentsInPlace` (Documents
-  dans Fichiers), manettes, ProMotion (`CADisableMinimumFrameDurationOnPhone`).
+  dans Fichiers), manettes, ProMotion (`CADisableMinimumFrameDurationOnPhone`),
+  `NSAppTransportSecurity` / `NSAllowsArbitraryLoads` (`http` vers le
+  serveur en ligne, § 4.9).
 - **Identifiant** `io.github.zozo787.recharged`
   (`MSCHARGED_IOS_BUNDLE_IDENTIFIER`), remplaçable par les outils de sideload.
 - **Modules de jeu** : un par version du jeu (US, EU, JP, KR), mêmes symboles,
@@ -351,6 +353,13 @@ tous les réglages dans `recharged.ini`).
   (`stall_timeout`), annulation vérifiée toutes les 100 ms, taille maximale,
   un second essai d'un GET échoué avant toute donnée. Servent : recherche
   de mises à jour, joueurs en ligne, rapports de match.
+- **`http` vers le serveur en ligne** : joueurs en ligne et rapports de
+  match vont en `http` simple au serveur `online.server` (une adresse IP par
+  défaut, modifiable), comme les requêtes WFC du jeu. iOS refuse le `http`
+  par défaut (App Transport Security) ; aucune exception par domaine ne
+  convient à une adresse IP réglable : `NSAllowsArbitraryLoads` dans
+  `Info.plist`. Le reste reste en `https` : le client HTTP refuse le `http`
+  sauf aux requêtes qui l'autorisent (`allow_http`).
 - **Paquet iOS d'une version** : `recharged-<version>-ios-arm64.ipa`
   (`update_check.cpp` reconnaît `.ipa` et la plateforme `ios` ; test dans
   `tests/launcher_updates.cpp`). Les builds du fork cherchent dans les
@@ -446,6 +455,9 @@ porte ce nom), `update_install.cpp` (`InstallBlocker` sous garde iOS).
   joue ; virtuelle, elle ne masque pas les contrôles tactiles.
 - **Joueurs en ligne, mises à jour, rapports de match indisponibles** →
   libcurl absent sur iOS : NSURLSession (§ 4.9).
+- **Joueurs en ligne absents malgré NSURLSession** (« App Transport Security
+  policy requires the use of a secure connection » dans le journal) → le
+  serveur en ligne est en `http` : `NSAllowsArbitraryLoads` (§ 4.9).
 - **Joueur 1 = manette éteinte au lancement** → la règle d'origine donnait le
   joueur 1 au clavier et à la souris, absents d'un iPhone, et les contrôles
   tactiles n'existaient pas : partie sans commandes ni croix pour quitter.
@@ -695,4 +707,5 @@ renommés au format du projet le même jour).
 | L25 | 11-14 | Libellés des contrôles tactiles en anglais, demandé pour les pull requests : « Tacle » → « Hit », « Changer » → « Swap » (noms déjà utilisés dans `controls.touch_layout`), « Quitter le jeu ? / L'application va se fermer. » → « Quit the game? / The app will close. », Annuler / Quitter → Cancel / Quit ; éditeur du launcher et journal (« Quit: … ») | `f09c27b` | Appareil : libellés dans leurs boutons, Cancel et Quit, éditeur | Terminé |
 | L26 | 11-14 | Guide d'accueil propre à iOS (`assets/launcher/welcome-ios.md`), mis par le paquet à la place du guide de bureau ; textes vérifiés contre le launcher actuel | `14af582` | À essayer sur l'appareil (ampoule à côté de Revert) | En cours |
 | L27 | 11-14 | Réseau sur iOS par NSURLSession (mises à jour, joueurs en ligne, rapports de match) ; paquets `.ipa` reconnus dans les versions publiées (test) ; barre et fenêtre des mises à jour comme sur PC, avec la page de la version au lieu de l'installation ; carte Updates de la page Advanced | `383f2f8` `59c5ee7` `3042d68` | Linux : `ctest --preset debug` 61/61 ; appareil : barre des mises à jour revenue ; compteur de joueurs absent (serveur en `http`, à voir) ; version de test du fork à publier | En cours |
-| L28 | 11-14 | Contrôles tactiles hors de l'encoche : placés entre les marges latérales de la zone sûre, dans le jeu et dans l'éditeur | ce commit | Appareil : iPhone 14 Plus (contrôles sous l'encoche avant) | En cours |
+| L28 | 11-14 | Contrôles tactiles hors de l'encoche : placés entre les marges latérales de la zone sûre, dans le jeu et dans l'éditeur | `d8f552d` | Appareil : iPhone 14 Plus (contrôles sous l'encoche avant) | En cours |
+| L29 | 11-14 | Joueurs en ligne et rapports de match : `http` vers le serveur en ligne autorisé (App Transport Security, `NSAllowsArbitraryLoads`) | ce commit | Appareil : compteur de joueurs absent avant (journal : App Transport Security) | En cours |
