@@ -1162,7 +1162,16 @@ private:
     // after Check for updates; the dialog shows the download. A release that
     // stays behind plays offline: the game's main menu keeps Online closed
     // (launcher/online_gate.h). Local builds keep the choice.
-    bool EnforcedUpdates() const { return updates_ && !update_preview_ && EnforcesUpdates(updates_->Build()); }
+    // iOS: an app cannot replace itself, so the update dialog offers the new
+    // .ipa instead (InstallBlocker), as it does to any copy that cannot update.
+    bool EnforcedUpdates() const
+    {
+#if defined(MSCHARGED_PLATFORM_IOS)
+        return false;
+#else
+        return updates_ && !update_preview_ && EnforcesUpdates(updates_->Build());
+#endif
+    }
 
     // Why an enforced update did not come in (DrawUpdateProblem).
     enum class UpdateProblem { None, CheckFailed, Failed, Cancelled, Blocked };
@@ -2157,8 +2166,14 @@ private:
         }
         else if (!status.install_blocker.empty() && !busy)
         {
+#if defined(MSCHARGED_PLATFORM_IOS)
+            Callout(status.install_blocker + " Download the new .ipa and install it the way you installed this one "
+                    "(SideStore, AltStore, Sideloadly...).",
+                    color::muted, Icon::Info);
+#else
             Callout(status.install_blocker + " Download the package and unpack it over this folder instead.",
                     color::muted, Icon::Info);
+#endif
             ImGui::Dummy({0, Dp(18)});
         }
         const bool ask_to_save = status.state == State::Installed && dirty_;
@@ -3341,9 +3356,7 @@ private:
             DrawLabelShadowed(draw, fonts.heading, {origin.x + pad, y + FontSize(fonts.heading) + Dp(2)},
                               Col(color::text, 0.86f), rest + 2, 1.2f);
         }
-#if !defined(MSCHARGED_PLATFORM_IOS) // an iOS app does not update itself
         DrawUpdateBar(origin, size.x, pad);
-#endif
 
         // Play button and status, over the bottom of the artwork.
         const std::string blocker = PlayBlocker();
@@ -8845,10 +8858,14 @@ private:
         }
         EndCard();
 
-#if !defined(MSCHARGED_PLATFORM_IOS) // an iOS app does not update itself
         BeginCard("##updates", "Updates",
+#if defined(MSCHARGED_PLATFORM_IOS)
+                  "Each start of the launcher looks for a newer build; install its .ipa the way you installed this "
+                  "one. A release plays online only while it is the newest one.",
+#else
                   "Each start of the launcher installs a newer build by itself. A release plays online only while "
                   "it is the newest one.",
+#endif
                   Icon::Download);
         if (BeginRows("##update_rows"))
         {
@@ -8860,7 +8877,6 @@ private:
             EndRows();
         }
         EndCard();
-#endif
 
         BeginCard("##graphics", "Graphics", nullptr, Icon::Display);
         if (BeginRows("##graphics_rows"))

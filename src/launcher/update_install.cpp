@@ -591,6 +591,11 @@ fs::path UpdateFolder(const fs::path& base) { return base / ".update"; }
 
 std::string InstallBlocker(const fs::path& base)
 {
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // Signed and read-only: the player installs the new .ipa (the update dialog's Download).
+    (void)base;
+    return "An iOS app cannot replace itself.";
+#endif
     if (!Exists(base / kPackageManifest)) return "This copy was not unpacked from a release package, so it cannot update itself.";
     try { ReadPackageManifest(base / kPackageManifest); }
     catch (const std::exception& error) { return std::string("The package's file list cannot be read: ") + error.what() + "."; }

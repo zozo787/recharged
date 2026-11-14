@@ -10,7 +10,7 @@ namespace mscharged::launcher
 {
 namespace
 {
-constexpr std::string_view kPlatforms[] = {"windows", "linux", "steamdeck", "macos"};
+constexpr std::string_view kPlatforms[] = {"windows", "linux", "steamdeck", "macos", "ios"};
 // Releases before the rename to Recharged (#64) named their packages mscharged-.
 constexpr std::string_view kPackagePrefixes[] = {"recharged-", "mscharged-"};
 constexpr std::string_view kMacUniversal = "macos-universal";
@@ -73,7 +73,7 @@ bool HidesTestBuilds(std::string_view notes)
     return false;
 }
 
-// recharged-<version>-<platform>-<arch>.zip/.tar.gz: the version text.
+// recharged-<version>-<platform>-<arch>.zip/.tar.gz (.ipa for iOS): the version text.
 bool PackageVersion(std::string_view name, std::string& version)
 {
     const auto prefix = std::find_if(std::begin(kPackagePrefixes), std::end(kPackagePrefixes),
@@ -82,6 +82,7 @@ bool PackageVersion(std::string_view name, std::string& version)
     name.remove_prefix(prefix->size());
     if (name.size() > 4 && name.substr(name.size() - 4) == ".zip") name.remove_suffix(4);
     else if (name.size() > 7 && name.substr(name.size() - 7) == ".tar.gz") name.remove_suffix(7);
+    else if (name.size() > 4 && name.substr(name.size() - 4) == ".ipa") name.remove_suffix(4);
     else return false;
     for (const auto platform : kPlatforms)
     {
@@ -196,7 +197,8 @@ const PackageAsset* PublishedBuild::PackageFor(const std::string& package) const
             for (const auto prefix : kPackagePrefixes)
             {
                 const std::string stem = std::string(prefix) + text + "-" + choice;
-                if (asset.name == stem + ".zip" || asset.name == stem + ".tar.gz") return &asset;
+                if (asset.name == stem + ".zip" || asset.name == stem + ".tar.gz" || asset.name == stem + ".ipa")
+                    return &asset;
             }
         }
     return nullptr;

@@ -92,6 +92,7 @@ essayé), **À faire**, **Abandonné**.
 | F17 | Disque GameCube de l'option Super Team importable | Validé (iPhone Duo ; sur iOS, le sélecteur ne s'ouvre qu'avec « Choose image… ») |
 | F18 | Vibration légère à chaque appui sur un contrôle tactile, désactivable | Validé (iPhone Duo ; sans effet sur iPad, sans Taptic Engine) |
 | F19 | Vibrations du jeu (rumble de la Wiimote) ressenties dans l'iPhone avec l'écran tactile | Validé (iPhone Duo : réalistes en jeu) |
+| F20 | Nouvelle version signalée comme sur PC (barre de la page Play, fenêtre des mises à jour), version iOS : télécharger le nouvel `.ipa`, pas d'installation | Fait (essai avec une version de test du fork à faire) |
 
 ### 3.2 Non fonctionnelles
 
@@ -230,8 +231,7 @@ essayé), **À faire**, **Abandonné**.
   image (marges à 0 hors iOS, mise en page inchangée). Barre latérale :
   couleur sous la marge, contenu décalé ; page et barre du bas avant les
   marges droite et basse ; l'illustration de la page Play va jusqu'au bord.
-- **Masqué sur iOS** : carte Screen, mises à jour (barre de la page Play et
-  carte Updates), Discord, « Log window »,
+- **Masqué sur iOS** : carte Screen, Discord, « Log window »,
   carte Wii Remote, « Reopen after the game », imports Dolphin ; « Mouse
   pointer » quand le joueur 1 est l'écran tactile (le doigt pointe toujours
   comme souris ; la ligne reste pour une manette, utile avec une souris ou un
@@ -334,7 +334,32 @@ masqué sur iOS et jamais armé.
 Une installation existante garde ses anciennes valeurs (le launcher écrit
 tous les réglages dans `recharged.ini`).
 
-### 4.9 Code partagé modifié (neutre hors iOS)
+### 4.9 Réseau et mises à jour
+
+- **Réseau** : `src/platform/http_client.cpp` passe par NSURLSession sur
+  iOS (libcurl n'y existe pas) ; le fichier y est compilé en Objective-C++
+  (`cmake/Http.cmake`, `-fobjc-arc`, Foundation). Mêmes règles que libcurl
+  et WinHTTP : https seulement (redirections comprises), délai sans données
+  (`stall_timeout`), annulation vérifiée toutes les 100 ms, taille maximale,
+  un second essai d'un GET échoué avant toute donnée. Servent : recherche
+  de mises à jour, joueurs en ligne, rapports de match.
+- **Paquet iOS d'une version** : `recharged-<version>-ios-arm64.ipa`
+  (`update_check.cpp` reconnaît `.ipa` et la plateforme `ios` ; test dans
+  `tests/launcher_updates.cpp`). Les builds du fork cherchent dans les
+  versions du fork (`MSCHARGED_BUILD_REPOSITORY`).
+- **Affichage** : le même que sur PC. Barre de la page Play (Release/Test,
+  état, joueurs en ligne), carte Updates de la page Advanced (texte iOS),
+  fenêtre « UPDATE AVAILABLE » (version, notes de version, View on GitHub).
+  Sur iOS, `InstallBlocker` répond « An iOS app cannot replace itself. » :
+  la fenêtre affiche alors « Download the new .ipa and install it the way
+  you installed this one (SideStore, AltStore, Sideloadly...). » et son
+  bouton **Download** ouvre l'`.ipa` dans Safari (même mécanisme que pour
+  une copie de bureau qui ne peut pas se mettre à jour).
+- **Mises à jour forcées** : jamais sur iOS (`EnforcedUpdates()` faux) ; une
+  nouvelle version ouvre la fenêtre au démarrage. Le blocage du jeu en ligne
+  d'une version officielle dépassée reste (`GatesOnline`).
+
+### 4.10 Code partagé modifié (neutre hors iOS)
 
 `desktop_wpad.cpp` / `.h` (emplacement tactile −1 hors iOS ; l'emplacement
 est cherché avant d'ouvrir une manette), `hardware_owner.cpp` / `.h` (joueur
@@ -343,7 +368,9 @@ tactile −1), `host_overlay.*` (dessin tactile sous garde iOS), launcher
 `launch_options.cpp` (clés tactiles et `UserFolder` sous garde iOS),
 `session_log.cpp`, `system_usage.cpp`, `hbm_debug.cpp` (`vm_region_64`),
 `tools/prepare_sqlite.py` (ne retire que les variables des cibles iOS et
-apparentées).
+apparentées), `http_client.cpp` et `cmake/Http.cmake` (NSURLSession sous
+garde iOS), `update_check.cpp` (paquets `.ipa` : aucun paquet de bureau ne
+porte ce nom), `update_install.cpp` (`InstallBlocker` sous garde iOS).
 
 ## 5. Pièges connus (cause → solution)
 
@@ -406,7 +433,8 @@ apparentées).
 - **« Nintendo Wii Remote » dans le journal sans rien de connecté** → normal :
   Wiimote virtuelle créée par `desktop_wpad.cpp` pour chaque manette qui
   joue ; virtuelle, elle ne masque pas les contrôles tactiles.
-- **Joueurs en ligne indisponibles** → libcurl absent sur iOS.
+- **Joueurs en ligne, mises à jour, rapports de match indisponibles** →
+  libcurl absent sur iOS : NSURLSession (§ 4.9).
 - **Joueur 1 = manette éteinte au lancement** → la règle d'origine donnait le
   joueur 1 au clavier et à la souris, absents d'un iPhone, et les contrôles
   tactiles n'existaient pas : partie sans commandes ni croix pour quitter.
@@ -417,7 +445,8 @@ apparentées).
   (`EnforcesUpdates`, `GatesOnline`, `launcher/online_gate.cpp`) ; l'`.ipa`
   de la CI est une build `dev` (`MSCHARGED_BUILD_CHANNEL=dev`) : ni
   installation, ni blocage. Le paquet est `ios-arm64`
-  (`launcher/current_build.h`).
+  (`launcher/current_build.h`). Sur iOS, même une version officielle ne
+  s'installe jamais seule : la fenêtre propose l'`.ipa` (§ 4.9).
 - **« Run workflow » absent** pour un workflow propre à `ios-port` → GitHub ne
   l'affiche que pour les workflows de la branche par défaut (`stable`).
 - **Envoi de l'`.ipa` en échec** (« Unexpected token '<', "<!DOCTYPE "… is
@@ -518,13 +547,12 @@ gestion de l'appareil.
 ## 8. Reste à faire
 
 - Essais sur d'autres iPhone (F16), dont un modèle à 3 Go (N3).
-- Piste, demandée par le mainteneur : notification de nouvelle version (sans installation, impossible
-  sur iOS : app en lecture seule, signée, qui ne peut ni se remplacer ni se
-  relancer). Demanderait des versions iOS publiées (un paquet `ios-arm64`
-  joint aux releases), un accès réseau sur iOS (libcurl absent : passer par
-  `NSURLSession`), et une interface qui informe et donne le lien, sans
-  bouton « Installer ». Pour une pull request : mises à jour masquées,
-  signalées comme limite connue.
+- Essai de la notification de nouvelle version (F20, § 4.9) : publier dans
+  le fork une version de test (étiquette `v1.1.8`, publiée : ni brouillon
+  ni préversion, que la recherche ignore) avec un fichier `recharged-1.1.8-ios-arm64.ipa` ; au
+  démarrage, l'app 1.1.7 doit ouvrir « UPDATE AVAILABLE / Version 1.1.8 »,
+  et Download ouvrir l'`.ipa`. Supprimer ensuite la version et son
+  étiquette. Côté projet d'origine : joindre l'`.ipa` aux versions publiées.
 - Pull requests vers `main` du projet d'origine (§ 9).
 - À la fin du portage : regrouper l'historique de `ios-port` en un commit
   par fonctionnalité (compilation iOS, fichiers dans Documents, plein écran,
@@ -614,6 +642,8 @@ Préparation : branches partant de `main`, une par pull request ; `ctest
   passent à `2704410`. Le mainteneur accepte le port : plan des pull
   requests au § 9. Libellés des contrôles tactiles traduits en anglais
   (« Hit », « Swap », « Quit the game? »). Guide d'accueil propre à iOS.
+  Réseau par NSURLSession et notification de nouvelle version comme sur PC
+  (version iOS : télécharger l'`.ipa`).
 
 ## 11. Suivi des travaux
 
@@ -649,4 +679,5 @@ renommés au format du projet le même jour).
 | L23 | 11-12 | Repli sur l'écran tactile quand aucune manette configurée n'est là au lancement (au lieu du clavier et de la souris), texte du launcher adapté | `40b53c5` | Appareil : DualSense éteinte, l'écran tactile joue ; allumée, elle joue sans contrôles tactiles ; Touch screen inchangé | Terminé |
 | L24 | 11-14 | Fusion de `main` du projet d'origine (1.1.7) dans `ios-port` : 3 conflits dans `src/launcher/main.cpp` (inclusions, `CurrentBuild()` déplacé dans `launcher/current_build.h` où le paquet `ios` est reporté, carte Updates réécrite et gardée masquée sur iOS) | `2704410` | CI : `.ipa` 1.1.7 ; Build binaries vert (Linux, Steam Deck, Windows, macOS) ; `ctest --preset debug` 61/61 ; appareil : la 1.1.7 tourne sur l'iPhone Duo | Terminé |
 | L25 | 11-14 | Libellés des contrôles tactiles en anglais, demandé pour les pull requests : « Tacle » → « Hit », « Changer » → « Swap » (noms déjà utilisés dans `controls.touch_layout`), « Quitter le jeu ? / L'application va se fermer. » → « Quit the game? / The app will close. », Annuler / Quitter → Cancel / Quit ; éditeur du launcher et journal (« Quit: … ») | `f09c27b` | Appareil : libellés dans leurs boutons, Cancel et Quit, éditeur | Terminé |
-| L26 | 11-14 | Guide d'accueil propre à iOS (`assets/launcher/welcome-ios.md`), mis par le paquet à la place du guide de bureau ; textes vérifiés contre le launcher actuel | ce commit | À essayer sur l'appareil (ampoule à côté de Revert) | En cours |
+| L26 | 11-14 | Guide d'accueil propre à iOS (`assets/launcher/welcome-ios.md`), mis par le paquet à la place du guide de bureau ; textes vérifiés contre le launcher actuel | `14af582` | À essayer sur l'appareil (ampoule à côté de Revert) | En cours |
+| L27 | 11-14 | Réseau sur iOS par NSURLSession (mises à jour, joueurs en ligne, rapports de match) ; paquets `.ipa` reconnus dans les versions publiées (test) ; barre et fenêtre des mises à jour comme sur PC, avec Download de l'`.ipa` au lieu de l'installation ; carte Updates de la page Advanced | ce commit | Linux : `ctest --preset debug` 61/61 ; appareil : version de test du fork à publier | En cours |

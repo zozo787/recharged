@@ -340,6 +340,20 @@ void TestReleases()
               && both[0].PackageFor("linux-x86_64")->name == "recharged-1.0.11+gffffffffffff-linux-x86_64.tar.gz"
               && both[1].PackageFor("linux-x86_64"),
           "Recharged and mscharged packages");
+    // The iOS app is an .ipa, which the player installs (an iOS app cannot replace itself).
+    {
+        const std::string ipa = "recharged-1.1.8+g222222222222-ios-arm64.ipa";
+        const auto ios = ParseReleases(platform::ParseJson(
+            "[" + WithAsset(Release("v1.1.8", false, "2026-11-20T10:00:00Z", "1.1.8+g222222222222"), "v1.1.8", ipa)
+            + "]"));
+        Check(ios.size() == 1 && ios[0].PackageFor("ios-arm64") && ios[0].PackageFor("ios-arm64")->name == ipa
+                  && ios[0].PackageFor("macos-arm64") && ios[0].PackageFor("macos-arm64")->name != ipa,
+              "iOS takes its .ipa, and only iOS");
+        // The fork's CI builds are development builds: a newer release is offered to them.
+        Check(FindUpdate(Build(BuildOrigin::Dev, "1.1.7+g333333333333", 0, 0, "ios-arm64"), UpdateChannel::Release, ios)
+                  == &ios[0],
+              "An iOS development build is offered a newer release");
+    }
     // Macs take the universal package, which runs on both kinds of Mac; for a
     // release from before it, the universal Mac falls back to its architecture's.
     {
