@@ -329,8 +329,9 @@ essayé), **À faire**, **Abandonné**.
   `Rumble` ; le jeu y envoie ses vibrations comme à toute manette
   (`desktop_wpad.cpp`, réglages Rumble et Strength de la page Controls) ; elles
   sont jouées par Core Haptics : un événement continu en boucle dont
-  l'intensité suit celle demandée, arrêté à 0 ou quand les contrôles
-  tactiles disparaissent. Le moteur est refait après une interruption
+  l'intensité suit celle demandée, arrêté à 0, quand les contrôles
+  tactiles se masquent (une manette prend leur place) et quand ils
+  disparaissent (fin de partie). Le moteur est refait après une interruption
   (arrière-plan, appel).
 - Rien de tout cela sur les appareils sans Taptic Engine (iPad).
 - `SDL_HINT_TOUCH_MOUSE_EVENTS=0` pendant le jeu, sinon la Wiimote
@@ -761,3 +762,4 @@ renommés au format du projet le même jour).
 | L28 | 11-14 | Contrôles tactiles hors de l'encoche : placés entre les marges latérales de la zone sûre, dans le jeu et dans l'éditeur | `d8f552d` | Appareil : iPhone 14 Plus, plus rien sous l'encoche ; iPhone Duo inchangé | Terminé |
 | L29 | 11-14 | Joueurs en ligne et rapports de match : `http` vers le serveur en ligne autorisé (App Transport Security, `NSAllowsArbitraryLoads`) | `4aea56c` | Appareil : compteur de joueurs affiché (iPhone Duo, iPhone 14 Plus) | Terminé |
 | L30 | 11-14 | Textes du launcher adaptés à iOS : Tap, this device, Miis sans Dolphin, langue, image manquante, page Display (écran entier), niveaux sonores, packs de textures (zone de dépôt masquée, ajout par Open et Fichiers) ; textes de bureau inchangés | `7bae7f5` `e534379` | Local : launcher compilé en mode iOS et Linux, `ctest` 61/61 ; appareil : Display (écran entier), Play, Sidekicks, Match rules, Miis, Game, Gameplay (pas de zone de dépôt, Open ouvre le dossier) | Terminé |
+| L31 | 11-14 | Rumble arrêté quand les contrôles tactiles se masquent : une manette connectée pendant une vibration la laissait tourner en boucle dans l'iPhone | ce commit | À essayer : connecter la DualSense pendant une vibration | En cours |

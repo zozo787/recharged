@@ -289,7 +289,12 @@ void TouchControls::Service(float width, float height, float left, float right)
         visible_ = visible;
         ++revision_;
         if (visible) Log("shown");
-        else Log("hidden: %s plays instead", physical.c_str());
+        else {
+            Log("hidden: %s plays instead", physical.c_str());
+            // The game's rumble goes to the controller now: the iPhone's
+            // looping vibration would otherwise go on (touch_haptics.mm).
+            TouchRumble(0);
+        }
     }
     if (!visible_) {
         {
