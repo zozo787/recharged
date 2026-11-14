@@ -74,6 +74,16 @@
         <string>UIInterfaceOrientationLandscapeLeft</string>
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
+    <!-- Plain http to the online server (players online, match reports), as the
+         game's own WFC requests: the server is an address the player can
+         change (online.server), so no exception domain fits. Everything else
+         stays https: the launcher's HTTP client refuses http unless a request
+         allows it (platform/http_client.h). -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
     <!-- The whole screen: no Split View or Slide Over beside the game. -->
     <key>UIRequiresFullScreen</key>
     <true/>
