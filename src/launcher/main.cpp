@@ -94,6 +94,20 @@
 
 namespace fs = std::filesystem;
 using namespace mscharged;
+
+// Words of the texts that differ on a touch screen (iOS): what a finger does,
+// and what the device is called.
+#if defined(MSCHARGED_PLATFORM_IOS)
+#define LAUNCHER_CLICK "Tap"
+#define LAUNCHER_CLICK_LOWER "tap"
+#define LAUNCHER_THIS_MACHINE "this device"
+#define LAUNCHER_THIS_MACHINE_TITLE "This device"
+#else
+#define LAUNCHER_CLICK "Click"
+#define LAUNCHER_CLICK_LOWER "click"
+#define LAUNCHER_THIS_MACHINE "this computer"
+#define LAUNCHER_THIS_MACHINE_TITLE "This computer"
+#endif
 using namespace mscharged::launcher;
 
 namespace
@@ -3684,8 +3698,12 @@ private:
             const auto hud = platform::HotkeyLabel(platform::ParseHotkeys(s.hotkeys)[HotkeyHud]);
             detail += "  -  HUD hidden" + (hud.empty() ? std::string() : " (" + hud + ")");
         }
+#if defined(MSCHARGED_PLATFORM_IOS)
+        return {"Full screen", detail, color::accent}; // the game always covers the screen
+#else
         return {s.fullscreen ? "Fullscreen" : std::to_string(s.width) + " x " + std::to_string(s.height) + " window",
                 detail, color::accent};
+#endif
     }
 
     Summary LanguageSummary() const
@@ -3935,8 +3953,13 @@ private:
         BeginCard("##language", "Game language", "Menus and on-screen text follow the Wii system language.", Icon::Info);
         if (BeginRows("##language_rows"))
         {
+#if defined(MSCHARGED_PLATFORM_IOS)
+            Row("Text language", "Automatic uses your device's language when this version has it, otherwise "
+                                 "English. Saved with your settings.");
+#else
             Row("Text language", "Automatic uses your computer's language when this version has it, otherwise "
                                  "English. Saved with your settings.");
+#endif
             LanguageControl();
             EndRows();
         }
@@ -4049,13 +4072,21 @@ private:
         using mscharged::platform::MiiDatabaseState;
         const auto& miis = InstalledMiis();
         if (miis.state == MiiDatabaseState::Damaged)
+#if defined(MSCHARGED_PLATFORM_IOS) // no Dolphin on iOS to import from
+            Callout("The game cannot read this Mii database.", color::warning, Icon::Warning);
+#else
             Callout("The game cannot read this Mii database. Import your Miis from Dolphin to replace it.",
                     color::warning, Icon::Warning);
+#endif
         else if (miis.state == MiiDatabaseState::Unusable)
             Callout(miis.error, color::danger, Icon::Error);
         else if (BeginRows("##mii_rows"))
         {
+#if defined(MSCHARGED_PLATFORM_IOS)
+            if (miis.miis.empty()) Row("None yet", "Make one below to play online.");
+#else
             if (miis.miis.empty()) Row("None yet", "Make one below, or import yours from Dolphin, to play online.");
+#endif
             for (std::size_t n = 0; n < miis.miis.size(); ++n) MiiRow(miis.miis[n], n);
             EndRows();
             if (miis.Full()) TextWrappedColored(fonts.caption, color::muted, "The database is full: it holds 100 Miis.");
@@ -4217,7 +4248,8 @@ private:
         const auto& lineup = lineups[std::size_t(lineup_captain_)];
         const auto standard = mscharged::platform::DefaultSidekickLineups()[std::size_t(lineup_captain_)];
         BeginCard("##lineup", kCaptainNames[lineup_captain_],
-                  "Click a sidekick to put another one in their place. The change goes straight into the game save.",
+                  LAUNCHER_CLICK " a sidekick to put another one in their place. The change goes straight into the "
+                  "game save.",
                   Icon::Pitch);
         Pitch(lineups);
         if (BeginRows("##lineup_rows"))
@@ -4509,8 +4541,8 @@ private:
     // or online with friends. Default and Competitive are built in.
     void MatchRulesPage()
     {
-        PageHeader("Match rules", "Presets of the match settings and cheats: choose one for your matches on this "
-                                  "computer, or online with friends. Ranked matches keep their own rules.");
+        PageHeader("Match rules", "Presets of the match settings and cheats: choose one for your matches on "
+                                  LAUNCHER_THIS_MACHINE ", or online with friends. Ranked matches keep their own rules.");
         using mscharged::platform::GameSaveState;
         using mscharged::platform::MatchMode;
         const auto& save = InstalledMatch();
@@ -4539,7 +4571,8 @@ private:
         EndCard();
 
         BeginCard("##match_presets", "Presets",
-                  "Use one for matches on this computer or with friends: it goes straight into the game save.",
+                  "Use one for matches on " LAUNCHER_THIS_MACHINE " or with friends: it goes straight into the game "
+                  "save.",
                   Icon::Trophy);
         for (std::size_t n = 0; n < list.presets.size(); ++n)
         {
@@ -4571,7 +4604,7 @@ private:
 
     static const char* MatchModeName(mscharged::platform::MatchMode mode)
     {
-        return mode == mscharged::platform::MatchMode::Offline ? "On this computer" : "Online with friends";
+        return mode == mscharged::platform::MatchMode::Offline ? "On " LAUNCHER_THIS_MACHINE : "Online with friends";
     }
 
     // One preset: its name and settings, then the buttons that put it in the
@@ -4596,7 +4629,7 @@ private:
         {
             const bool used = ready && save.modes[std::size_t(mode)] == preset.settings;
             if (mode == MatchMode::Friends) ImGui::SameLine(0, gap);
-            const char* label = mode == MatchMode::Offline ? "This computer" : "With friends";
+            const char* label = mode == MatchMode::Offline ? LAUNCHER_THIS_MACHINE_TITLE : "With friends";
             if (SecondaryButton(mode == MatchMode::Offline ? "use_offline" : "use_friends", label, {use_w, height},
                                 ready && !used, used ? Icon::Check : Icon::Play))
                 UsePreset(preset, mode);
@@ -5065,7 +5098,7 @@ private:
     void GameImagesCard()
     {
         const auto& fonts = CurrentFonts();
-        BeginCard("##images", "Game images", "Click the image you want to play.", Icon::Disc);
+        BeginCard("##images", "Game images", LAUNCHER_CLICK " the image you want to play.", Icon::Disc);
         GameFolderPicker();
         ImGui::Dummy({0, Dp(6)});
 
@@ -5307,8 +5340,13 @@ private:
         else if (row.checking) { note = "Checking the image..."; note_tint = color::info; }
         else if (row.missing)
         {
+#if defined(MSCHARGED_PLATFORM_IOS)
+            // A tap opens the iOS picker, which copies the image in again.
+            note = "Missing: it was moved, renamed or deleted. Tap to choose it again.";
+#else
             note = check_.folder_missing ? "Missing: its folder is not there. Connect its drive, or click to locate it."
                                          : "Missing: it was moved, renamed or deleted. Click to locate it.";
+#endif
             note_tint = color::warning;
         }
         else if (state == ImageState::Unsupported)
@@ -5482,7 +5520,11 @@ private:
 
     void DisplayPage()
     {
+#if defined(MSCHARGED_PLATFORM_IOS)
+        PageHeader("Display", "How the game's picture is drawn on the screen.");
+#else
         PageHeader("Display", "How the game window opens and how its picture is drawn.");
+#endif
         if (draft_.performance_mode)
         {
             Chip("Performance mode is on, so antialiasing stays off.", color::info, Icon::Display);
@@ -5644,12 +5686,30 @@ private:
     // window, in pixels of its shape; {} when unknown.
     ShapeSize PictureScreen() const
     {
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // The game covers the whole screen, as the launcher's window does.
+        int pixels_w = 0, pixels_h = 0;
+        if (window_ && SDL_GetWindowSizeInPixels(window_, &pixels_w, &pixels_h) && pixels_w > 0 && pixels_h > 0)
+            return {pixels_w, pixels_h};
+        return {};
+#endif
         if (!draft_.fullscreen) return {draft_.width, draft_.height};
         if (const auto chosen = ParseResolution(draft_.fullscreen_resolution); chosen.width) return chosen;
         const SDL_DisplayMode* mode = StartDisplayMode();
         if (!mode || mode->w <= 0 || mode->h <= 0) return {};
         const float density = mode->pixel_density > 0 ? mode->pixel_density : 1.0f;
         return {int(std::lround(mode->w * density)), int(std::lround(mode->h * density))};
+    }
+
+    // Whether the game covers a whole display (fullscreen; always on iOS) or
+    // opens in a window, for the Display page's notes.
+    bool GameFillsScreen() const
+    {
+#if defined(MSCHARGED_PLATFORM_IOS)
+        return true;
+#else
+        return draft_.fullscreen;
+#endif
     }
 
     // What the aspect ratio does on the display the game opens on.
@@ -5669,7 +5729,7 @@ private:
         else if (draft_.aspect == "stretch")
         {
             const int percent = StretchPercent(screen.width, screen.height, aw, ah);
-            if (!draft_.fullscreen)
+            if (!GameFillsScreen())
                 note = "Uses the " + shape + " layout and fills the window at any size, stretching the picture with "
                     "it.";
             else if (screen.width <= 0)
@@ -5681,7 +5741,7 @@ private:
                     + std::to_string(std::abs(percent)) + "% " + (percent > 0 ? "wider" : "narrower") + " than "
                     + shape + ".";
         }
-        else if (PictureFills() && !draft_.fullscreen)
+        else if (PictureFills() && !GameFillsScreen())
             note = "The window can take any shape: in matches the wider view fills it with more of the stadium.";
         else if (PictureFills())
         {
@@ -5690,7 +5750,7 @@ private:
                 : "In matches, fills this " + size + " display with more of the stadium "
                     + (bars.sides ? "at the sides." : "above and below.") + " Menus keep 16:9.";
         }
-        else if (!draft_.fullscreen)
+        else if (!GameFillsScreen())
             note = "The window keeps the " + shape + " shape when you resize it, so the picture fills it. "
                 "Maximized on a screen of another shape, it shows bars.";
         else if (screen.width > 0)
@@ -5714,7 +5774,7 @@ private:
         const auto picture = PictureSize(screen.width, screen.height, wide ? 16 : 4, wide ? 9 : 3, PictureFills());
         const int width = RenderWidth(draft_.resolution, picture.width);
         const int height = RenderHeight(draft_.resolution, picture.height);
-        const std::string where = draft_.fullscreen ? "this screen" : "this window";
+        const std::string where = GameFillsScreen() ? "this screen" : "this window";
         std::string note = std::string(RenderResolutionLabel(draft_.resolution)) + ": " + std::to_string(width) + " x "
             + std::to_string(height);
         if (RenderScale(draft_.resolution) == 0.0f) note += " on " + where + ".";
@@ -5779,7 +5839,11 @@ private:
             else if (KnownRefreshRate(display) && pacing.target_hz > display + 0.5)
                 note += "This display refreshes at " + hz(display) + " Hz, so it cannot show every frame.";
             else if (pacing.target_hz == 0.0)
+#if defined(MSCHARGED_PLATFORM_IOS)
+                note += "No limit: the game draws as fast as this device allows.";
+#else
                 note += "No limit: the game draws as fast as your computer allows.";
+#endif
             else if (KnownRefreshRate(display))
                 note += "This display refreshes at " + hz(display) + " Hz.";
         }
@@ -5843,7 +5907,7 @@ private:
                         ("Profile: " + profile.name
                          + (builtin ? std::string(" (") + platform::GamepadFamilyName(family) + ")" : std::string()))
                             .c_str());
-            TextColored(fonts.caption, color::muted, "Your controller's button for each Wii input. Click to change.");
+            TextColored(fonts.caption, color::muted, "Your controller's button for each Wii input. " LAUNCHER_CLICK " to change.");
             const auto row = [&](const std::string& pad, const char* wii) {
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
@@ -6163,7 +6227,12 @@ private:
 
         // [audio] <group>_volume: applied by the game module when the game starts.
         BeginCard("##sound_levels", "Sound levels",
+#if defined(MSCHARGED_PLATFORM_IOS)
+                  "Each kind of sound as a share of the level the game gives it, on this device only. Applies when "
+                  "the game starts.",
+#else
                   "Each kind of sound as a share of the level the game gives it, on the PC only. Applies when the game starts.",
+#endif
                   Icon::Sliders);
         if (BeginRows("##sound_level_rows"))
         {
@@ -8526,8 +8595,14 @@ private:
                                     "how the game looks.", Icon::Sliders);
         if (BeginRows("##mods_rows"))
         {
+#if defined(MSCHARGED_PLATFORM_IOS)
+            // No drag and drop into the app: the Files app puts packs in the folder.
+            Row("Texture packs", "Texture packs made for Dolphin, from the folder below: put a pack's folder there "
+                                 "with the Files app.");
+#else
             Row("Texture packs", "Texture packs made for Dolphin, from the folder below. Drop a pack's folder or .zip "
                                  "file onto this page to add it.");
+#endif
             if (Toggle("##texture_packs", &draft_.texture_packs)) dirty_ = true;
             EndRows();
         }
@@ -8708,8 +8783,13 @@ private:
         const float cx = pos.x + width * 0.5f;
         draw->AddCircleFilled({cx, pos.y + Dp(30)}, Dp(17), Col(color::accent, 0.12f));
         DrawIcon(draw, Icon::Download, {cx, pos.y + Dp(30)}, Dp(18), Col(color::accent));
+#if defined(MSCHARGED_PLATFORM_IOS)
+        const char* title = "No texture pack yet";
+        const char* detail = "Put a pack's folder (such as R4Q) in the folder above, with the Files app.";
+#else
         const char* title = "Drop a texture pack here";
         const char* detail = "A pack's folder (such as R4Q) or its .zip file: it is copied into the folder above.";
+#endif
         DrawLabel(draw, fonts.label, {cx - TextSize(fonts.label, title).x * 0.5f, pos.y + Dp(54)}, Col(color::text), title);
         DrawLabel(draw, fonts.caption, {cx - TextSize(fonts.caption, detail).x * 0.5f, pos.y + Dp(54) + FontSize(fonts.label) + Dp(4)},
                   Col(color::muted), detail);
