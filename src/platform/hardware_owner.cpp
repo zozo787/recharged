@@ -81,7 +81,7 @@ bool SDLCALL Watch(void*, SDL_Event* event) {
 
 // Standard gamepads (not Wii devices) connected now; waits up to 1.5 s for
 // `wanted` of them, since some systems announce controllers asynchronously.
-int ConnectedGamepads(int wanted) {
+int ConnectedGamepads(int wanted, SDL_JoystickID touch) {
     SDL_SetHintWithPriority(SDL_HINT_JOYSTICK_HIDAPI_WII, "0", SDL_HINT_DEFAULT);
     if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD)) return 0;
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(1500);
@@ -92,7 +92,7 @@ int ConnectedGamepads(int wanted) {
         if (SDL_JoystickID* ids = SDL_GetGamepads(&total)) {
             for (int n = 0; n < total; ++n) {
                 const auto vendor = SDL_GetGamepadVendorForID(ids[n]), product = SDL_GetGamepadProductForID(ids[n]);
-                if (!(vendor == 0x057e && (product == 0x0306 || product == 0x0330))) ++count;
+                if (ids[n] != touch && !(vendor == 0x057e && (product == 0x0306 || product == 0x0330))) ++count;
             }
             SDL_free(ids);
         }
@@ -148,6 +148,10 @@ void Service() {
 }
 
 namespace mscharged::platform {
+namespace {
+// iOS: whether the touch controls play (NativeTouchControlsPlay).
+bool touch_controls_play = false;
+} // namespace
 void RetainNativeHardwareWindowClose(SDL_Window* window) {
     const auto id = window ? SDL_GetWindowID(window) : 0;
     if (!id || SDL_GetWindowFromID(id) != window)
@@ -242,6 +246,10 @@ void InitializeNativeHardwareInput(SDL_Window* window, WpadSDLSettings settings,
     hid.channels = players.remotes;
     const bool remotes_play = !players.fixed || !players.remotes.empty();
     if (settings.physical_wii_remotes && remotes_play) InitializeWiimoteHid(hid);
+    if (players.touch >= 0 && !players.touch_id) {
+        SDL_Log("Touch controls are not available: player %d is left out", players.touch + 1);
+        players.touch = -1;
+    }
     if (players.fixed) {
         // Controllers that are configured but not there at start drop out and
         // the other players close up in order; with nobody left keyboard &
@@ -267,7 +275,7 @@ void InitializeNativeHardwareInput(SDL_Window* window, WpadSDLSettings settings,
         const int wanted = int(std::count_if(players.gamepads.begin(), players.gamepads.end(),
             [](int channel) { return channel >= 0; }));
         if (wanted) {
-            int present = ConnectedGamepads(wanted);
+            int present = ConnectedGamepads(wanted, SDL_JoystickID(players.touch_id));
             for (auto& channel : players.gamepads) {
                 if (channel < 0) continue;
                 if (present > 0) { --present; continue; }
@@ -281,9 +289,13 @@ void InitializeNativeHardwareInput(SDL_Window* window, WpadSDLSettings settings,
             if (players.keyboard >= 0) by_channel[players.keyboard] = &players.keyboard;
             for (auto& [id, channel] : players.remotes) if (channel >= 0) by_channel[channel] = &channel;
             for (auto& channel : players.gamepads) if (channel >= 0) by_channel[channel] = &channel;
+            if (players.touch >= 0) by_channel[players.touch] = &players.touch;
             int next = 0;
             for (auto* channel : by_channel) if (channel) *channel = next++;
-            if (!next) {
+            if (!next && players.touch_id) {
+                players.touch = 0;
+                SDL_Log("No configured controller is connected: the touch screen is player 1");
+            } else if (!next) {
                 players.keyboard = 0;
                 SDL_Log("No configured controller is connected: keyboard & mouse is player 1");
             }
@@ -299,7 +311,9 @@ void InitializeNativeHardwareInput(SDL_Window* window, WpadSDLSettings settings,
             int playing = 0;
             for (const auto& [id, channel] : players.remotes) playing += channel >= 0;
             for (const int channel : players.gamepads) playing += channel >= 0;
-            if (players.mouse_with_controller && playing == 1) {
+            playing += players.touch >= 0;
+            // The touch screen points with a finger, as a mouse (runtime/touch_controls.h).
+            if ((players.mouse_with_controller || players.touch == 0) && playing == 1) {
                 desktop.mouse = true;
                 desktop.mouse_player_channel = 0;
             }
@@ -307,12 +321,25 @@ void InitializeNativeHardwareInput(SDL_Window* window, WpadSDLSettings settings,
         for (const auto& [id, channel] : players.remotes)
             if (channel >= 0) reserved |= 1u << channel;
         desktop.gamepad_channels = players.gamepads;
+        // The touch controls take a gamepad slot no configured gamepad uses
+        // (the slot's profile gives their buttons), kept for their own id.
+        // Standing by (no player), their id only keeps them out of the slots.
+        desktop.touch_id = players.touch_id;
+        if (players.touch >= 0)
+            for (int slot = 3; slot >= 0; --slot)
+                if (desktop.gamepad_channels[slot] < 0) {
+                    desktop.gamepad_channels[slot] = players.touch;
+                    desktop.touch_slot = slot;
+                    break;
+                }
         desktop.gamepad_players = desktop.gamepads =
-            std::any_of(players.gamepads.begin(), players.gamepads.end(), [](int channel) { return channel >= 0; });
-        for (const int channel : players.gamepads)
+            std::any_of(desktop.gamepad_channels.begin(), desktop.gamepad_channels.end(),
+                        [](int channel) { return channel >= 0; });
+        for (const int channel : desktop.gamepad_channels)
             if (channel >= 0) reserved |= 1u << channel;
         SetNativeWpadReservedChannels(reserved);
     }
+    touch_controls_play = players.touch >= 0;
     try { InitializeDesktopWpad(window, desktop); }
     catch (...) { ShutdownWiimoteHid(); throw; }
     try { InitializeNativeAlarms(); }
@@ -362,6 +389,7 @@ void InitializeNativeHardwareInput(SDL_Window* window, WpadSDLSettings settings,
 }
 
 void ServiceNativeHardwareInput() { Service(); }
+bool NativeTouchControlsPlay() { return touch_controls_play; }
 
 void InitializeNativeHardwareOwner(SDL_Window* window, WpadSDLSettings settings) {
     { std::lock_guard lock(State().latch);

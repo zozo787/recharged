@@ -1,6 +1,9 @@
 #include "runtime/host_overlay.h"
 
 #include "platform/path.h"
+#if defined(MSCHARGED_PLATFORM_IOS)
+#include "runtime/touch_controls.h"
+#endif
 
 #include <aurora/imgui.h>
 #include <imgui.h>
@@ -108,19 +111,29 @@ void HostOverlay::Update(std::uint32_t surface_width, std::uint32_t surface_heig
         }
         if (opacity == 0) message_.clear();
     }
-    const bool showing = performance_ || opacity > 0;
+    bool touch = false; // the on-screen controls (iOS)
+    std::uint64_t touchRevision = 0;
+#if defined(MSCHARGED_PLATFORM_IOS)
+    touch = touch_ && touch_->Visible();
+    touchRevision = touch ? touch_->Revision() : 0;
+#endif
+    const bool showing = performance_ || opacity > 0 || touch;
     if (!showing) {
         if (drawn_) aurora_imgui_clear_overlay();
         drawn_ = false;
         return;
     }
     if (drawn_ && values == shownValues_ && count == shownCount_ && message_ == shownMessage_ && opacity == shownOpacity_
-        && surface_width == shownWidth_ && surface_height == shownHeight_)
+        && surface_width == shownWidth_ && surface_height == shownHeight_ && touchRevision == shownTouch_)
         return;
     const auto size = FpsOverlayFontSize(surface_width, surface_height);
     if (size != builtSize_) BuildFonts(size);
     aurora_imgui_begin_overlay(surface_width, surface_height);
     ImDrawList* draw = ImGui::GetForegroundDrawList();
+    // Under the numbers and messages.
+#if defined(MSCHARGED_PLATFORM_IOS)
+    if (touch) touch_->Draw(draw, number_);
+#endif
     const float shadow = std::max(1.0f, std::round(size / 15.0f));
     std::optional<FpsOverlayLayout> performanceLayout;
     if (performance_) {
@@ -169,6 +182,7 @@ void HostOverlay::Update(std::uint32_t surface_width, std::uint32_t surface_heig
     shownOpacity_ = opacity;
     shownWidth_ = surface_width;
     shownHeight_ = surface_height;
+    shownTouch_ = touchRevision;
 }
 
 } // namespace mscharged::runtime

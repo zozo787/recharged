@@ -104,7 +104,18 @@ struct Settings
     // DolphinBar slot), remote-<Bluetooth address> (a Wii Remote paired over
     // Bluetooth, e.g. remote-9ce635c69076), gamepad1-gamepad4 or off.
     // Players fill in order; each device plays once.
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // iOS: player 1 plays with the on-screen touch controls.
+    std::array<std::string, 4> players{"touch", "off", "off", "off"};
+    // controls.touch_layout: where the on-screen controls sit and how big
+    // they are (bootstrap/touch_layout.h), set in the launcher's layout
+    // editor; empty for the default layout.
+    std::string touch_layout;
+    // controls.touch_opacity: the on-screen controls' visibility, 20-100 %.
+    int touch_opacity = 100;
+#else
     std::array<std::string, 4> players{"keyboard", "off", "off", "off"};
+#endif
     // [keyboard]: keys of each keyboard & mouse action ("Return | Space").
     std::array<std::string, KeyActionCount> keys = DefaultKeys();
     static std::array<std::string, KeyActionCount> DefaultKeys()
