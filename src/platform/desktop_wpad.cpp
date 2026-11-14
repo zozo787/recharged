@@ -655,16 +655,35 @@ void ServiceDesktopWpad() {
             // a physical Wii extension into a button-only desktop controller.
             const auto vendor = SDL_GetGamepadVendorForID(ids[n]), product = SDL_GetGamepadProductForID(ids[n]);
             if (vendor == 0x057e && (product == 0x0306 || product == 0x0330)) continue;
-            auto* input = SDL_OpenGamepad(ids[n]);
-            if (!input) continue;
+            // The touch controls' virtual gamepad has its own slot, which no
+            // other pad takes (iOS; see DesktopWpadSettings::touch_slot); it
+            // takes none while it stands by (no touch player).
+            const bool touch_pad = state.settings.touch_id && ids[n] == SDL_JoystickID(state.settings.touch_id);
+            if (touch_pad && state.settings.touch_slot < 0) continue;
+            const bool touch = touch_pad && state.settings.touch_slot >= 0;
             std::unique_ptr<Device>* slot = nullptr;
             int index = 0;
             for (; index < int(state.pads.size()); ++index)
-                if (!state.pads[index] && (!state.settings.gamepad_players || state.settings.gamepad_channels[index] >= 0)) {
+                if (!state.pads[index] && (index == state.settings.touch_slot) == touch &&
+                    (!state.settings.gamepad_players || state.settings.gamepad_channels[index] >= 0)) {
                     slot = &state.pads[index];
                     break;
                 }
-            if (!slot) { SDL_CloseGamepad(input); break; }
+            // A controller that connects plays in place of the touch controls:
+            // on a phone or tablet it is there to play alone. Their virtual
+            // gamepad leaves the slot and takes it back once the controller
+            // is gone (it stays attached, so its id stays the same).
+            if (!slot && !touch && state.settings.touch_slot >= 0) {
+                auto& held = state.pads[state.settings.touch_slot];
+                if (!held || held->input_id == SDL_JoystickID(state.settings.touch_id)) {
+                    if (held) Retire(held);
+                    slot = &held;
+                    index = state.settings.touch_slot;
+                }
+            }
+            if (!slot) continue;
+            auto* input = SDL_OpenGamepad(ids[n]);
+            if (!input) continue;
             try {
                 *slot = MakeDevice(input);
                 (*slot)->profile = state.settings.gamepad_profiles[index];

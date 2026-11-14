@@ -3,6 +3,9 @@
 #include "graphics_card.h"
 #include "platform/path.h"
 #include "platform/wiimote_ids.h"
+#if defined(MSCHARGED_PLATFORM_IOS)
+#include "touch_layout.h"
+#endif
 
 #include <algorithm>
 #include <charconv>
@@ -104,6 +107,10 @@ Values Encode(const Settings& s)
             {"mods.texture_packs", s.texture_packs ? "true" : "false"}, {"mods.texture_folder", s.texture_folder},
             {"mods.texture_pack_order", s.texture_pack_order}, {"mods.texture_packs_off", s.texture_packs_off},
             {"mods.dump_textures", s.dump_textures ? "true" : "false"}};
+#if defined(MSCHARGED_PLATFORM_IOS)
+    values.emplace("controls.touch_layout", s.touch_layout);
+    values.emplace("controls.touch_opacity", std::to_string(s.touch_opacity));
+#endif
     for (std::size_t n = 0; n < KeyActionCount; ++n)
         values.emplace(std::string("keyboard.") + kKeyActions[n].key, s.keys[n]);
     for (std::size_t n = 0; n < HotkeyCount; ++n)
@@ -241,8 +248,18 @@ Settings Decode(const Values& values)
         if (it == values.end()) continue;
         if (platform::IsBluetoothWiimoteId(it->second)) { s.players[n] = it->second; continue; }
         choice(key.c_str(), s.players[n], {"keyboard", "remote1", "remote2", "remote3", "remote4",
-                                            "gamepad1", "gamepad2", "gamepad3", "gamepad4", "off"});
+                                            "gamepad1", "gamepad2", "gamepad3", "gamepad4",
+#if defined(MSCHARGED_PLATFORM_IOS)
+                                            "touch", // the on-screen controls (runtime/touch_controls.h)
+#endif
+                                            "off"});
     }
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // Read as far as it can be (bootstrap/touch_layout.h): never an error.
+    if (const auto it = values.find("controls.touch_layout"); it != values.end())
+        s.touch_layout = FormatTouchLayout(ParseTouchLayout(it->second));
+    number("controls.touch_opacity", s.touch_opacity, kMinTouchOpacity, kMaxTouchOpacity);
+#endif
     // [keyboard] and [gamepadN]: one or two names per action, separated by " | ".
     const auto names = [&](const std::string& key, std::string& value, const char* what) {
         const auto it = values.find(key);

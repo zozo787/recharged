@@ -283,6 +283,10 @@ add_library(charged_host STATIC
     src/platform/shader_cache.cpp
 )
 target_include_directories(charged_host PUBLIC src)
+if(MSCHARGED_IOS)
+    # The on-screen controls' layout (controls.touch_layout), iOS only.
+    target_sources(charged_host PRIVATE src/bootstrap/touch_layout.cpp)
+endif()
 target_compile_features(charged_host PUBLIC cxx_std_17)
 target_link_libraries(charged_host PRIVATE nod::nod)
 add_executable(mscharged-bootstrap src/bootstrap/main.cpp)

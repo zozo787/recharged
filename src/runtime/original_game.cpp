@@ -90,6 +90,9 @@
 #include <SDL3/SDL_hints.h>
 #include <SDL3/SDL_filesystem.h>
 #include "platform/native_module_loader.h"
+#if defined(MSCHARGED_PLATFORM_IOS)
+#include "runtime/touch_controls.h"
+#endif
 #if defined(MSCHARGED_AUTOPILOT)
 #include "platform/bank_cue.h"
 #endif
@@ -754,6 +757,7 @@ int mscharged::RunOriginalGame(int argc, char** argv,
         for (int player = 0; player < 4; ++player) {
             const auto& device = launch.settings.players[player];
             if (device == "keyboard") players.keyboard = player;
+            else if (device == "touch") players.touch = player; // iOS on-screen controls
             else if (device.rfind("gamepad", 0) == 0) players.gamepads[device.back() - '1'] = player;
             else if (device != "off") players.remotes[device] = player;
         }
@@ -780,8 +784,27 @@ int mscharged::RunOriginalGame(int argc, char** argv,
         // Original WPADControlSpeaker ON: 0x08 in the European game, 0x80 in the others.
         wpad.remote_speaker_reg01=release->code==mscharged::GameCode::Europe ? 0x08 : 0x80;
         wpad.bluetooth_search=launch.settings.bluetooth_search;
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS: a stick and buttons on the screen for the player who chose the
+        // touch screen (runtime/touch_controls.h). Created before the input
+        // owner, which gives that player's channel to their virtual gamepad.
+        // Made even when nobody chose them: they stand in as player 1 when no
+        // configured controller is connected (an iPhone has no keyboard and
+        // mouse to fall back on), and go once the input owner has decided.
+        std::optional<mscharged::runtime::TouchControls> touchControls;
+        if(nativeSend) {
+            touchControls.emplace(launch.settings.touch_layout,launch.settings.touch_opacity); // the launcher's layout editor
+            players.touch_id=touchControls->JoystickId();
+        }
+#endif
         mscharged::platform::InitializeNativeHardwareInput(host.window,wpad,
             mscharged::platform::GetNativeSTMInput(), desktop, players);
+#if defined(MSCHARGED_PLATFORM_IOS)
+        if(touchControls && !mscharged::platform::NativeTouchControlsPlay()) {
+            touchControls.reset();
+            mscharged::platform::SessionLogLine("Touch controls: not playing, removed");
+        }
+#endif
         {
             const auto& s=launch.settings;
             const std::string line="Wii Remote settings: sensor bar "+s.sensor_bar+", sensitivity "
@@ -1336,6 +1359,10 @@ int mscharged::RunOriginalGame(int argc, char** argv,
                 launch.settings.fps_overlay ? std::optional(mscharged::runtime::ParseOverlayCorner(
                     launch.settings.fps_overlay_corner).value_or(mscharged::runtime::OverlayCorner::TopRight))
                                             : std::nullopt);
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // Drawn by the overlay (the controls were created before the input owner).
+        if(hostOverlay && touchControls) hostOverlay->SetTouchControls(&*touchControls);
+#endif
         // display.remember_window: not in Steam's Game Mode, for a window size
         // from the command line or without a settings file.
         std::optional<mscharged::runtime::WindowMemory> windowMemory;
@@ -1493,6 +1520,21 @@ int mscharged::RunOriginalGame(int argc, char** argv,
             if(hostOverlay) {
                 if(const auto rate=frameRate.Sample(frames,now)) hostOverlay->SetRate(*rate);
                 const auto size=aurora_get_window_size();
+#if defined(MSCHARGED_PLATFORM_IOS)
+                if(touchControls) {
+                    // The safe area's side margins (a notch in landscape), in surface pixels.
+                    float left=0,right=0;
+                    SDL_Rect safe{};
+                    int windowWidth=0,windowHeight=0;
+                    if(SDL_GetWindowSize(host.window,&windowWidth,&windowHeight)&&windowWidth>0
+                       &&SDL_GetWindowSafeArea(host.window,&safe)) {
+                        const float scale=float(size.native_fb_width)/float(windowWidth);
+                        left=float(safe.x)*scale;
+                        right=float(windowWidth-safe.x-safe.w)*scale;
+                    }
+                    touchControls->Service(float(size.native_fb_width),float(size.native_fb_height),left,right);
+                }
+#endif
                 hostOverlay->Update(size.native_fb_width,size.native_fb_height,now);
             }
             if(windowMemory) windowMemory->Service(now);

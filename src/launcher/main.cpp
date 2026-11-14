@@ -6242,7 +6242,8 @@ private:
     // controls.player1-4: keyboard & mouse, a Wii Remote (in a DolphinBar
     // slot or paired over Bluetooth), a gamepad or off. Players fill in order
     // and each device plays once. Controllers missing when the game starts
-    // drop out; with nobody left keyboard & mouse is player 1, alone.
+    // drop out; with nobody left keyboard & mouse is player 1, alone (on iOS
+    // the touch screen).
     void PlayersCard()
     {
         const auto& status = wii_status_;
@@ -6299,6 +6300,7 @@ private:
 
         const auto name = [&](const std::string& device) {
             if (device == "keyboard") return std::string("Keyboard & mouse");
+            if (device == "touch") return std::string("Touch screen");
             if (device == "off") return std::string("Off");
             if (device.rfind("gamepad", 0) == 0)
             {
@@ -6352,6 +6354,9 @@ private:
                             dirty_ = true;
                         }
                     };
+#if defined(MSCHARGED_PLATFORM_IOS)
+                    option("touch"); // the on-screen controls, always there
+#endif
                     option("keyboard");
                     // Connected Wii Remotes, then this player's remote when it is away.
                     for (const auto& remote : status.remotes) option(remote.id);
@@ -6406,8 +6411,13 @@ private:
         if (std::any_of(players.begin(), players.end(),
                         [](const std::string& device) { return device != "keyboard" && device != "off"; }))
         {
+#if defined(MSCHARGED_PLATFORM_IOS)
+            const std::string rule = "Controllers that are not connected when the game starts drop out. With nobody "
+                                     "left, the touch screen plays as player 1.";
+#else
             const std::string rule = "Controllers that are not connected when the game starts drop out. With nobody "
                                      "left, keyboard & mouse plays as player 1.";
+#endif
             const auto& fonts = CurrentFonts();
             const float width = ImGui::GetContentRegionAvail().x;
             const auto height = [&](const std::string& text) {
@@ -6420,8 +6430,9 @@ private:
                                                 (note.empty() ? rule : note).c_str(), nullptr, width);
             ImGui::Dummy({width, block});
         }
-        // Single player on a Wii Remote or gamepad only.
-        if (players[0] != "keyboard" && players[1] == "off" && BeginRows("##mouse_rows"))
+        // Single player on a Wii Remote or gamepad only. Not for the touch
+        // screen (iOS): a finger points as the mouse whatever this says.
+        if (players[0] != "keyboard" && players[0] != "touch" && players[1] == "off" && BeginRows("##mouse_rows"))
         {
             Row("Mouse pointer", "The mouse also points for player 1: left click is A, right click is B. "
                 "The controller keeps working. Only when player 1 plays alone.");
@@ -7706,9 +7717,15 @@ private:
 
     void ControlsMain()
     {
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS: apps cannot reach Wii Remotes (Bluetooth Classic HID).
+        PageHeader("Controls", "Play with the touch screen, or an Xbox, PlayStation or other Bluetooth gamepad.");
+        PlayersCard();
+#else
         PageHeader("Controls", "Play with keyboard and mouse, an Xbox, PlayStation or other gamepad, or a Wii Remote with Nunchuk. Keep the game window focused.");
         PlayersCard();
         WiiRemoteCard();
+#endif
         RumbleCard();
         HotkeysCard();
 
