@@ -165,7 +165,7 @@ const CurlApi& Curl()
     });
     return api;
 }
-#else
+#elif defined(_WIN32)
 std::wstring Wide(const std::string& text)
 {
     if (text.empty()) return {};
