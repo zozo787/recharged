@@ -482,9 +482,19 @@ public:
 
         // Created at the design size, then fitted once the window knows its
         // display's pixel density and content scale.
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS: a window is always the whole screen and follows its rotation;
+        // borderless hides the status bar. Not SDL_WINDOW_FULLSCREEN: it pins
+        // the window to the display mode read at start, and the iPhone Duo,
+        // unfolded, drew a portrait-sized picture on a landscape screen.
+        constexpr SDL_WindowFlags kPlatformWindow = SDL_WINDOW_BORDERLESS;
+#else
+        constexpr SDL_WindowFlags kPlatformWindow = 0;
+#endif
         window_ = SDL_CreateWindow(GameTitle().c_str(), int(kDefaultDesignWidth),
                                    int(kDefaultDesignHeight),
-                                   SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_HIDDEN);
+                                   SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_HIDDEN
+                                       | kPlatformWindow);
         Require(window_ != nullptr, "Cannot create launcher window");
         platform::SetApplicationIcon(window_);
         renderer_ = SDL_CreateRenderer(window_, nullptr);
@@ -492,6 +502,9 @@ public:
         SDL_SetRenderVSync(renderer_, 1);
         metrics_ = CurrentMetrics();
         ApplyWindowMetrics(true);
+#if defined(MSCHARGED_PLATFORM_IOS)
+        LogScreen("created");
+#endif
 
         const auto resources = base_ / "assets/launcher";
         // The header's three layers, the same proportions: the scene, gold strokes
@@ -598,6 +611,16 @@ public:
                     RefreshGamepad();
                 if (event.type == SDL_EVENT_DISPLAY_ADDED || event.type == SDL_EVENT_DISPLAY_REMOVED)
                     RefreshDisplays();
+#if defined(MSCHARGED_PLATFORM_IOS)
+                // Screen sizes and rotations in the log (folding the iPhone Duo changes them).
+                if (event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED
+                    || event.type == SDL_EVENT_DISPLAY_ORIENTATION)
+                {
+                    char what[160] = "";
+                    SDL_GetEventDescription(&event, what, int(sizeof what));
+                    LogScreen(what);
+                }
+#endif
                 // On the Gameplay page a dropped texture pack is added; anything
                 // else is a game image or folder, as on the other pages.
                 if (event.type == SDL_EVENT_DROP_FILE && event.drop.data
@@ -670,7 +693,13 @@ public:
             ++frame;
             if (options_.smoke_test && frame >= smoke_frames) quit = true;
             const auto elapsed = SDL_GetTicks() - frame_start;
+#if !defined(MSCHARGED_PLATFORM_IOS)
             if (elapsed < 16) SDL_Delay(Uint32(16 - elapsed));
+#else
+            // iOS: vsync alone paces the frames. The extra wait for 60 Hz fell
+            // between a 120 Hz screen's refreshes and made scrolling judder.
+            (void)elapsed;
+#endif
         }
         if (options_.smoke_test)
             std::cout << "Launcher rendered all " << int(PageCount) << " pages and loaded its resources.\n";
@@ -678,7 +707,51 @@ public:
     }
 
 private:
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // The window's and the screen's sizes and orientation, in the session log.
+    void LogScreen(const char* why) const
+    {
+        SDL_Rect safe{};
+        SDL_GetWindowSafeArea(window_, &safe);
+        int w = 0, h = 0, pw = 0, ph = 0;
+        SDL_GetWindowSize(window_, &w, &h);
+        SDL_GetWindowSizeInPixels(window_, &pw, &ph);
+        const SDL_DisplayID display = SDL_GetDisplayForWindow(window_);
+        SDL_Rect bounds{};
+        SDL_GetDisplayBounds(display, &bounds);
+        const SDL_DisplayMode* mode = SDL_GetDesktopDisplayMode(display);
+        char line[320];
+        std::snprintf(line, sizeof line,
+                      "Screen (%s): window %dx%d, %dx%d pixels; display %dx%d, desktop mode %dx%d, orientation %d; "
+                      "safe area %d,%d %dx%d",
+                      why, w, h, pw, ph, bounds.w, bounds.h, mode ? mode->w : 0, mode ? mode->h : 0,
+                      int(SDL_GetCurrentDisplayOrientation(display)), safe.x, safe.y, safe.w, safe.h);
+        platform::SessionLogLine(line);
+    }
+#endif
+
     // ---------------------------------------------------------------- scale
+    // The screen's unsafe margins for this frame (`size`: the window in
+    // ImGui's units). On iOS the window covers the whole screen; elsewhere
+    // the margins stay 0.
+    void UpdateSafeInsets(ImVec2 size)
+    {
+        inset_left_ = inset_top_ = inset_right_ = inset_bottom_ = 0;
+#if defined(MSCHARGED_PLATFORM_IOS)
+        int w = 0, h = 0;
+        SDL_Rect safe{};
+        if (!SDL_GetWindowSize(window_, &w, &h) || w <= 0 || h <= 0 || !SDL_GetWindowSafeArea(window_, &safe)) return;
+        // SDL gives window coordinates; ImGui may use other units.
+        const float sx = size.x / float(w), sy = size.y / float(h);
+        inset_left_ = std::max(0.0f, float(safe.x) * sx);
+        inset_top_ = std::max(0.0f, float(safe.y) * sy);
+        inset_right_ = std::max(0.0f, float(w - safe.x - safe.w) * sx);
+        inset_bottom_ = std::max(0.0f, float(h - safe.y - safe.h) * sy);
+#else
+        (void)size;
+#endif
+    }
+
     UiMetrics CurrentMetrics() const
     {
         const DisplayScale scale{SDL_GetWindowDisplayScale(window_), SDL_GetWindowPixelDensity(window_)};
@@ -2969,9 +3042,10 @@ private:
             | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoBackground
             | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
         ImGui::PopStyleVar();
-        const float sidebar = size.x < Dp(1000) ? Dp(216) : Dp(244);
-        DrawSidebar(sidebar, size.y);
-        DrawMain({sidebar, 0}, {size.x - sidebar, size.y}, quit);
+        UpdateSafeInsets(size);
+        const float sidebar = size.x - inset_left_ - inset_right_ < Dp(1000) ? Dp(216) : Dp(244);
+        DrawSidebar(inset_left_ + sidebar, size.y);
+        DrawMain({inset_left_ + sidebar, 0}, {size.x - inset_left_ - sidebar, size.y}, quit);
         if (training_requested_)
         {
             training_requested_ = false;
@@ -2994,15 +3068,18 @@ private:
         ImGui::End();
     }
 
+    // `width` includes the screen's unsafe left margin (inset_left_), which
+    // the sidebar's colour fills; its contents start after it.
     void DrawSidebar(float width, float height)
     {
         const auto& fonts = CurrentFonts();
         auto* draw = ImGui::GetWindowDrawList();
         draw->AddRectFilled({0, 0}, {width, height}, Col(color::sidebar));
         draw->AddLine({width - 1, 0}, {width - 1, height}, Col(color::border, 0.7f), 1.0f);
-        const float pad = Dp(24);
+        const float left = inset_left_, inner = width - left;
+        const float pad = left + Dp(24);
         // The name in plain text: the logo itself is on the Play and About pages.
-        float y = Dp(30);
+        float y = inset_top_ + Dp(30);
         DrawTracked(draw, fonts.caption, {pad, y}, Col(color::muted), "NATIVE PC PORT", Dp(2.4f));
         y += FontSize(fonts.caption) + Dp(2);
         DrawLabel(draw, fonts.title, {pad, y}, IM_COL32_WHITE, "RECHARGED");
@@ -3015,26 +3092,26 @@ private:
         // of them is open.
         const auto setup = [](int page) { return page == PageMiis || page == PageSidekicks || page == PageRules; };
         if (setup(page_)) setup_page_ = page_;
-        ImGui::SetCursorPos({Dp(12), y});
+        ImGui::SetCursorPos({left + Dp(12), y});
         for (int i = 0; i < PageCount; ++i)
         {
-            ImGui::SetCursorPosX(Dp(12));
+            ImGui::SetCursorPosX(left + Dp(12));
             if (setup(i))
             {
                 if (i != PageMiis) continue;
                 const auto row = [&](int page) { return NavPage{page_names[page], page_icons[page], page_ == page}; };
                 const int clicked = NavGroup("Online/Match setup", Icon::Clipboard, setup(page_),
-                                             {row(PageMiis), row(PageSidekicks), row(PageRules)}, width - Dp(24));
+                                             {row(PageMiis), row(PageSidekicks), row(PageRules)}, inner - Dp(24));
                 if (clicked == 0) page_ = setup_page_;
                 if (clicked > 0) page_ = PageMiis + clicked - 1;
             }
-            else if (NavItem(page_names[i], page_icons[i], page_ == i, width - Dp(24))) page_ = i;
+            else if (NavItem(page_names[i], page_icons[i], page_ == i, inner - Dp(24))) page_ = i;
             ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetStyle().ItemSpacing.y + Dp(4));
         }
 
         // Version at the bottom of the sidebar; test builds show a badge above
         // it that opens their pull request.
-        const float badge = height - Dp(40), nav_end = ImGui::GetCursorPosY();
+        const float badge = height - inset_bottom_ - Dp(40), nav_end = ImGui::GetCursorPosY();
         if (nav_end < badge - Dp(36) && std::string_view(build::channel) == "test")
         {
             ImGui::SetCursorPos({pad - Dp(2), badge - Dp(36)});
@@ -3084,10 +3161,14 @@ private:
         // Which Wii Remotes answer: for the Players card, and for the Play
         // page when a player uses a remote.
         if (page_ == PageControls || (page_ == PagePlay && RemotePlayer())) PollWiimotes();
+        // The page and the bar keep out of the screen's unsafe margins
+        // (inset_*_, iOS); the bar's colour and the Play page's artwork
+        // still reach the screen's edges.
         const float bar = Dp(74);
-        const ImVec2 content{size.x, size.y - bar};
-        ImGui::SetCursorPos(origin);
-        if (page_ == PagePlay) DrawPlayPage(origin, content, quit);
+        const ImVec2 content{size.x - inset_right_, size.y - bar - inset_top_ - inset_bottom_};
+        const ImVec2 page_origin{origin.x, origin.y + inset_top_};
+        ImGui::SetCursorPos(page_origin);
+        if (page_ == PagePlay) DrawPlayPage(page_origin, content, quit);
         else
         {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Dp(36, 30));
@@ -3117,7 +3198,15 @@ private:
             ImGui::EndChild();
             ImGui::PopStyleVar();
         }
-        DrawBottomBar({origin.x, origin.y + content.y}, {size.x, bar}, quit);
+        const float bar_y = page_origin.y + content.y;
+        if (inset_right_ > 0 || inset_bottom_ > 0)
+        {
+            auto* draw = ImGui::GetWindowDrawList();
+            draw->AddRectFilled({origin.x, bar_y}, {origin.x + size.x, origin.y + size.y},
+                                Col(Mix(color::window, color::sidebar, 0.7f)));
+            draw->AddLine({origin.x, bar_y}, {origin.x + size.x, bar_y}, Col(color::border, 0.8f), 1.0f);
+        }
+        DrawBottomBar({origin.x, bar_y}, {content.x, bar}, quit);
     }
 
     void DrawPlayPage(ImVec2 origin, ImVec2 size, bool& quit)
@@ -3133,9 +3222,10 @@ private:
         const float button_y = origin.y + hero - Dp(30), below = button_y + button;
         const float cards_y = std::clamp(origin.y + size.y - margin - card, below + gap, below + Dp(64));
         const float art = cards_y - origin.y;
-        hero_ = {origin.x, origin.y, size.x, art};
+        // Under the screen's unsafe right margin too, up to its edge.
+        hero_ = {origin.x, origin.y, size.x + inset_right_, art};
         hero_visible_ = true;
-        const ImVec2 art_max{origin.x + size.x, origin.y + art};
+        const ImVec2 art_max{origin.x + size.x + inset_right_, origin.y + art};
         // Shades of the page colour over the artwork, eased in eight bands so that no
         // edge shows: the logo's side dark, the lower part dissolving into the page
         // before the cards, a little shade under the update controls.
@@ -5290,6 +5380,7 @@ private:
         const auto hotkeys = DraftHotkeys();
         const auto key = [&](HotkeyIndex hotkey) { return platform::HotkeyLabel(hotkeys[hotkey]); };
 
+#if !defined(MSCHARGED_PLATFORM_IOS) // iOS: the game always covers the whole screen
         BeginCard("##window", "Screen", nullptr, Icon::Display);
         if (BeginRows("##window_rows"))
         {
@@ -5325,6 +5416,7 @@ private:
             EndRows();
         }
         EndCard();
+#endif
 
         BeginCard("##picture", "Picture", nullptr, Icon::Sliders);
         if (BeginRows("##picture_rows"))
@@ -8393,8 +8485,10 @@ private:
                     if (ImGui::Selectable(names[i], draft_.ui_scale == values[i])) { draft_.ui_scale = values[i]; dirty_ = true; }
                 ImGui::EndCombo();
             }
+#if !defined(MSCHARGED_PLATFORM_IOS) // iOS: an app cannot start itself again
             Row("Reopen after the game", "Opens the launcher again when you close the game.");
             if (Toggle("##reopen_after_game", &draft_.reopen_after_game)) dirty_ = true;
+#endif
             EndRows();
         }
         EndCard();
@@ -8453,7 +8547,7 @@ private:
             Row("Performance stats", "Records frame times for each game session, with the arena and settings, and a summary per arena. Saves a CSV and summary in the logs folder; testers can share them.");
             if (Toggle("##frame_logging", &draft_.frame_logging)) dirty_ = true;
 
-            const auto recordings = base_ / "logs";
+            const auto recordings = UserFolder(base_) / "logs";
             const auto recordingsFolder = PathUtf8(recordings);
             Row("Frame recordings", recordingsFolder.c_str());
             if (SecondaryButton("open_frame_recordings", "Open folder", {ImGui::GetContentRegionAvail().x, Dp(40)},
@@ -8986,7 +9080,7 @@ private:
         if (SecondaryButton("open_logs", "Open logs folder", button, true, Icon::Folder))
         {
             const fs::path log = platform::SessionLogPath();
-            const fs::path folder = log.empty() ? base_ / "logs" : log.parent_path();
+            const fs::path folder = log.empty() ? UserFolder(base_) / "logs" : log.parent_path();
             std::error_code error;
             fs::create_directories(folder, error);
             OpenPath(folder);
@@ -9047,6 +9141,10 @@ private:
     std::map<std::string, int> remote_players_;
     std::unique_ptr<platform::WiimotePlayerLights> remote_lights_;
     std::set<std::string> wii_held_; // remotes kept through one missed status answer
+    // The screen's unsafe margins (notch, Dynamic Island, rounded corners,
+    // home indicator) in window units, which the launcher's contents keep out
+    // of; 0 outside iOS.
+    float inset_left_ = 0, inset_top_ = 0, inset_right_ = 0, inset_bottom_ = 0;
     // Controls: keyboard & mouse keys view, and the keycap waiting for a key.
     bool keyboard_view_ = false;
     int capture_action_ = -1, capture_slot_ = -1;
@@ -9225,6 +9323,21 @@ int main(int argc, char** argv)
     SetAppName();
 #if defined(__APPLE__) && !defined(MSCHARGED_PLATFORM_IOS)
     if (int code = 0; mscharged::platform::LeaveAppTranslocation(code)) return code;
+#endif
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // Landscape only, as Info.plist says; SDL also uses it to orient windows.
+    SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+    // iOS starts apps in "/": work in Documents, where the player's files are
+    // (relative paths of recharged.ini, screenshots/).
+    {
+        std::error_code error;
+        const auto documents = mscharged::UserFolder({});
+        if (!documents.empty())
+        {
+            std::filesystem::create_directories(documents, error);
+            std::filesystem::current_path(documents, error);
+        }
+    }
 #endif
     try
     {
@@ -9529,7 +9642,9 @@ int main(int argc, char** argv)
             result = launcher.Run(std::move(options));
             frontend_launch = launcher.FrontendLaunch();
             if (launcher.RestartRequested()) restart = launcher.RestartExecutable();
+#if !defined(MSCHARGED_PLATFORM_IOS) // iOS refuses it: leaving the game closes the app
             else if (frontend_launch && frontend_launch->settings.reopen_after_game) reopen = launcher.RestartExecutable();
+#endif
         } // Destroy the launcher/ImGui/SDL session before Aurora initializes.
         if (!restart.empty())
         {

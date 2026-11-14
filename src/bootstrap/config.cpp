@@ -9,6 +9,7 @@
 #include <cctype>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <fstream>
 #include <locale>
 #include <map>
@@ -666,10 +667,21 @@ constexpr const char* kDataFolder = "data";
 constexpr const char* kOldDataFolder = "original-main-credits-data";
 }
 
+std::filesystem::path UserFolder(const std::filesystem::path& executable_directory)
+{
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // HOME is the app's container; Documents is shared through the Files app
+    // (UIFileSharingEnabled in cmake/Info-iOS.plist.in).
+    if (const char* home = std::getenv("HOME"); home && *home)
+        return PathFromUtf8(home) / "Documents";
+#endif
+    return executable_directory;
+}
+
 std::filesystem::path DataFolder(const std::filesystem::path& executable_directory)
 {
-    auto folder = executable_directory / kDataFolder;
-    auto old = executable_directory / kOldDataFolder;
+    auto folder = UserFolder(executable_directory) / kDataFolder;
+    auto old = UserFolder(executable_directory) / kOldDataFolder;
     std::error_code error;
     if (!std::filesystem::exists(folder, error) && std::filesystem::is_directory(old, error)) return old;
     return folder;
@@ -677,8 +689,8 @@ std::filesystem::path DataFolder(const std::filesystem::path& executable_directo
 
 bool MoveOldDataFolder(const std::filesystem::path& executable_directory)
 {
-    const auto folder = executable_directory / kDataFolder;
-    const auto old = executable_directory / kOldDataFolder;
+    const auto folder = UserFolder(executable_directory) / kDataFolder;
+    const auto old = UserFolder(executable_directory) / kOldDataFolder;
     std::error_code error;
     if (std::filesystem::exists(folder, error) || !std::filesystem::is_directory(old, error)) return false;
     std::filesystem::rename(old, folder, error);

@@ -82,11 +82,19 @@ struct Settings
     bool performance_mode = false;
     // display.antialiasing: off, fxaa, 4x (multisampling of the game's frame),
     // 4x_fxaa or 4x_ssaa (supersampling); see kAntialiasingChoices.
-    std::string antialiasing = "4x";
     // display.resolution: the game's 3D render size. window renders one pixel
     // per window pixel of the picture; native the Wii's 640x448; 2x-4x fixed
     // multiples of it. Viewport and projection stay the game's own.
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // iOS: 4x multisampling of a phone's many pixels outruns its GPU. The
+    // unfolded iPhone Duo (2853x2007) ran at 30 FPS with window and 4x,
+    // and at full speed with window and no antialiasing (tested on device).
+    std::string antialiasing = "off";
     std::string resolution = "window";
+#else
+    std::string antialiasing = "4x";
+    std::string resolution = "window";
+#endif
     int master_volume = 100;
     // [audio] <group>_volume: each group of the game's sounds (kSoundGroups
     // order), 0-100 % of the levels the game sets itself.
@@ -205,6 +213,8 @@ struct Settings
     std::string ui_scale = "auto";    // launcher.ui_scale: auto or a percentage (75 to 200)
     // launcher.reopen_after_game: open the launcher again when a game started
     // from it closes normally.
+    // Not on iOS: an app cannot start itself again there (the launcher hides
+    // it and never arms the reopen; leaving the game closes the app).
     bool reopen_after_game = false;
     // launcher.show_welcome: the welcome guide (assets/launcher/welcome.md)
     // opens at the next start; closing it switches this off.
@@ -314,7 +324,11 @@ void SaveConfig(ConfigFile& file, const Settings& settings);
 std::filesystem::path ResolveDiscPath(const Settings& settings, const std::filesystem::path& config);
 // game.gamecube_disc's path, empty when none is set.
 std::filesystem::path ResolveGameCubeDiscPath(const Settings& settings, const std::filesystem::path& config);
-// Saves, shader caches and the game clock, beside the executable: data/, or
+// Where the player's files go: settings, data/, logs and screenshots. Beside
+// the executable, except on iOS, where Recharged.app is signed and read-only:
+// there the app's Documents folder, which the Files app shows.
+std::filesystem::path UserFolder(const std::filesystem::path& executable_directory);
+// Saves, shader caches and the game clock, in the user folder: data/, or
 // the original-main-credits-data/ of earlier builds until it has been moved.
 std::filesystem::path DataFolder(const std::filesystem::path& executable_directory);
 // Renames the earlier builds' folder to data/ once. Returns false and leaves

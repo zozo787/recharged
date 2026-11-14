@@ -86,6 +86,10 @@ std::filesystem::path DefaultConfigPath(const std::filesystem::path& executable_
         fs::copy_file(old, config, error);
         return error ? old : config;
     };
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // Never inside the read-only app, which holds recharged.ini.example.
+    return UserFolder(executable_directory) / "recharged.ini";
+#endif
     if (fs::exists("recharged.ini") || fs::exists("mscharged.ini")) return adopt(fs::absolute("recharged.ini"));
     for (auto directory = executable_directory; !directory.empty(); directory = directory.parent_path())
     {
