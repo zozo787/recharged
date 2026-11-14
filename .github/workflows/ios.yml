@@ -22,9 +22,9 @@ on:
         type: string
         default: newest
       regions:
-        description: Game modules to build (eu, us, jp, kr, space-separated, or all)
+        description: Game modules to build (us, eu, jp, kr, space-separated, or all)
         type: string
-        default: eu
+        default: all
 
 permissions:
   contents: read
@@ -54,9 +54,9 @@ jobs:
       CCACHE_BASEDIR: ${{ github.workspace }}
       CCACHE_NOHASHDIR: 'true'
       CCACHE_MAXSIZE: 3G
-      # One module per game version; pushes build only the European one
-      # (repository variable IOS_REGIONS, e.g. "all").
-      IOS_REGIONS: ${{ inputs.regions || vars.IOS_REGIONS || 'eu' }}
+      # One module per game version, all four as in build.yml's desktop
+      # builds (repository variable IOS_REGIONS, e.g. "eu", for fewer).
+      IOS_REGIONS: ${{ inputs.regions || vars.IOS_REGIONS || 'all' }}
       # No IPHONEOS_DEPLOYMENT_TARGET here: Apple's clang reads it for every
       # compile, so the tools the build runs on this Mac (SQLite's generator,
       # Rust build scripts) would come out as iOS programs that cannot run.
