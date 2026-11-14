@@ -541,7 +541,10 @@ le mainteneur accepte le port dans le dépôt d'origine (2026-11-13).
 
 1. Cible de build iOS, paquet et CI : un job iOS **dans `build.yml`**, que
    les jobs de version et de build de test n'attendent pas (un build iOS en
-   échec ne bloque jamais une version).
+   échec ne bloque jamais une version). Il compile les **quatre modules
+   de jeu** (US, EU, JP, KR), comme les jobs Linux, Windows et macOS de
+   `build.yml`, et non le seul module EU de `ios.yml` (choix du fork pour
+   des builds plus courts).
 2. Dossiers de l'app et gestion des fenêtres.
 3. Contrôles tactiles comme choix de joueur.
 4. Changements du launcher.
