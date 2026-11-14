@@ -6701,7 +6701,7 @@ private:
     {
         if (!touch_layout_open_) return;
         static constexpr const char* kNames[TouchItemCount] = {
-            "A", "B", "C", "Z", "Tacle (shake the Remote)", "Changer (shake the Nunchuk)", "+", "-", "1", "2",
+            "A", "B", "C", "Z", "Hit (shake the Remote)", "Swap (shake the Nunchuk)", "+", "-", "1", "2",
             "Quit (the cross)", "D-pad", "Stick"};
         auto& io = ImGui::GetIO();
         const ImVec2 size = io.DisplaySize;

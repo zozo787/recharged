@@ -306,7 +306,7 @@ void TouchControls::Service(float width, float height)
         if (confirming_) {
             // Only the window's two buttons answer, to a new touch or a tap;
             // fingers already down stay idle until they lift.
-            int choice = 0; // 1: Quitter, 2: Annuler
+            int choice = 0; // 1: Quit, 2: Cancel
             const auto pick = [&](float nx, float ny) {
                 const float x = nx * width, y = ny * height;
                 if (dialogQuit_.Contains(x, y)) choice = 1;
@@ -331,7 +331,7 @@ void TouchControls::Service(float width, float height)
                     close.window.timestamp = SDL_GetTicksNS();
                     close.window.windowID = window;
                     SDL_PushEvent(&close);
-                    Log("Quitter: asking the game window to close");
+                    Log("Quit: asking the game window to close");
                 }
             }
         }
@@ -387,7 +387,7 @@ void TouchControls::Service(float width, float height)
             pressed[n] = true;
             --held_[n];
         }
-    // The cross opens the confirmation window (the window's Quitter sends the
+    // The cross opens the confirmation window (the window's Quit sends the
     // game window's close request, which the game takes as the Wii's power
     // button, platform/hardware_owner.cpp). Nothing reaches the game meanwhile.
     if (pressed[Quit] && !quitWasPressed_ && !confirming_) {
@@ -462,7 +462,7 @@ void TouchControls::Service(float width, float height)
 void TouchControls::Draw(ImDrawList* draw, ImFont* font) const
 {
     if (!visible_ || width_ <= 0) return;
-    // controls.touch_opacity scales every part (the Quitter window stays as it is).
+    // controls.touch_opacity scales every part (the Quit window stays as it is).
     const auto white = [&](int alpha) { return IM_COL32(255, 255, 255, int(std::lround(float(alpha) * opacity_))); };
     const ImU32 fill = white(40), fillPressed = white(120);
     const ImU32 line = white(140), text = white(220);
@@ -488,22 +488,22 @@ void TouchControls::Draw(ImDrawList* draw, ImFont* font) const
     draw->AddCircleFilled({knobX_, knobY_}, stickRadius_ * 0.45f, stickActive_ ? fillPressed : white(70));
     if (!confirming_) return;
     const ImU32 text_full = IM_COL32(255, 255, 255, 220);
-    // "Quitter le jeu ?" over a dimmed screen.
+    // "Quit the game?" over a dimmed screen.
     const float s = std::min(width_, height_);
     draw->AddRectFilled({0, 0}, {width_, height_}, IM_COL32(0, 0, 0, 140));
     draw->AddRectFilled({dialog_.x0, dialog_.y0}, {dialog_.x1, dialog_.y1}, IM_COL32(22, 26, 34, 245), 0.03f * s);
     draw->AddRect({dialog_.x0, dialog_.y0}, {dialog_.x1, dialog_.y1}, IM_COL32(255, 255, 255, 60), 0.03f * s, 0,
                   thickness);
     // iOS cannot reopen the launcher: leaving the game closes the app.
-    centred("Quitter le jeu ?", 0.055f * s, (dialog_.x0 + dialog_.x1) * 0.5f, dialog_.y0 + 0.08f * s, text_full);
-    centred("L'application va se fermer.", 0.036f * s, (dialog_.x0 + dialog_.x1) * 0.5f, dialog_.y0 + 0.145f * s,
+    centred("Quit the game?", 0.055f * s, (dialog_.x0 + dialog_.x1) * 0.5f, dialog_.y0 + 0.08f * s, text_full);
+    centred("The app will close.", 0.036f * s, (dialog_.x0 + dialog_.x1) * 0.5f, dialog_.y0 + 0.145f * s,
             IM_COL32(211, 215, 221, 200));
     const auto button = [&](const TouchRect& r, const char* label, ImU32 colour) {
         draw->AddRectFilled({r.x0, r.y0}, {r.x1, r.y1}, colour, 0.02f * s);
         centred(label, 0.045f * s, (r.x0 + r.x1) * 0.5f, (r.y0 + r.y1) * 0.5f, IM_COL32(255, 255, 255, 240));
     };
-    button(dialogCancel_, "Annuler", IM_COL32(70, 78, 92, 255));
-    button(dialogQuit_, "Quitter", IM_COL32(196, 52, 46, 255));
+    button(dialogCancel_, "Cancel", IM_COL32(70, 78, 92, 255));
+    button(dialogQuit_, "Quit", IM_COL32(196, 52, 46, 255));
 }
 
 } // namespace mscharged::runtime

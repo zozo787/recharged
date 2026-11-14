@@ -23,13 +23,13 @@ namespace mscharged::runtime {
 // the game, driving an SDL virtual gamepad. The game takes that gamepad like
 // any other (platform/desktop_wpad.cpp) with the default layout of
 // bootstrap/gamepad_actions.h: the stick is the Nunchuk stick, A/B the Remote's
-// A/B, C and Z the Nunchuk buttons, "Tacle" shakes the Remote (hit an
-// opponent), "Changer" shakes the Nunchuk (swap items; C uses one), +, -, 1 and
+// A/B, C and Z the Nunchuk buttons, "Hit" shakes the Remote (hit an
+// opponent), "Swap" shakes the Nunchuk (swap items; C uses one), +, -, 1 and
 // 2 are the Remote's (no HOME: the game is built without its HOME Menu), and
-// the small pad is the D-pad. A small cross at the top left opens "Quitter le
-// jeu ?": Quitter asks the game window to close, as closing it does on a
+// the small pad is the D-pad. A small cross at the top left opens "Quit the
+// game?": Quit asks the game window to close, as closing it does on a
 // computer (the game powers off like a Wii; iOS cannot start the app again, so
-// the app closes); Annuler goes back to the game. Created only when a player
+// the app closes); Cancel goes back to the game. Created only when a player
 // chose the touch screen (controls.playerN = touch), before the input owner
 // sets up the players. While a physical controller is connected it plays
 // instead and the controls hide (the virtual gamepad stays attached, released).
@@ -123,7 +123,7 @@ private:
     bool loggedService_ = false;
     // The cross's confirmation window and its buttons, in surface pixels.
     TouchRect dialog_{}, dialogQuit_{}, dialogCancel_{};
-    bool confirming_ = false;    // "Quitter le jeu ?" is open
+    bool confirming_ = false;    // "Quit the game?" is open
     bool quitWasPressed_ = false; // the cross was pressed on the last frame
     bool quitSent_ = false;       // the close request went out
     // Frames a tapped button stays pressed.

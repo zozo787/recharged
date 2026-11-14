@@ -246,12 +246,12 @@ essayé), **À faire**, **Abandonné**.
   par défaut de `bootstrap/gamepad_actions.h`). Créée seulement si un joueur
   a choisi « Touch screen », **avant** `InitializeNativeHardwareInput`.
   Dessinée par `HostOverlay` (ImGui d'Aurora), redessinée quand elle change.
-- **Commandes** (libellés en français, police ASCII + ×) : stick (Nunchuk),
-  A, B, C (utiliser l'objet), Z, « Tacle » (secouer la Wiimote, gâchette
-  droite), « Changer » (secouer le Nunchuk : ordre des objets, RB), − et +
+- **Commandes** (libellés en anglais, police ASCII + ×) : stick (Nunchuk),
+  A, B, C (utiliser l'objet), Z, « Hit » (secouer la Wiimote, gâchette
+  droite), « Swap » (secouer le Nunchuk : ordre des objets, RB), − et +
   (Back, Start), 1 (pause dans ce jeu) et 2, croix directionnelle, et une
-  petite croix « × » qui ouvre « Quitter le jeu ? / L'application va se
-  fermer. » (Annuler, Quitter).
+  petite croix « × » qui ouvre « Quit the game? / The app will close. »
+  (Cancel, Quit).
 - **Pointeur** : un doigt posé hors des boutons et hors de la zone du stick
   pointe ; sa position est envoyée comme souris (identifiant propre
   `0x54434850`) à chaque image, en gardant la dernière position. La souris
@@ -290,7 +290,7 @@ essayé), **À faire**, **Abandonné**.
   léger « tap » du Taptic Engine (`UIImpactFeedbackGenerator`, style léger,
   `src/runtime/touch_haptics.mm`, Objective-C++, joué sur le fil principal)
   quand un bouton passe de relâché à appuyé (un seul par image, pas pendant
-  l'appui) et à l'ouverture de « Quitter le jeu ? ».
+  l'appui) et à l'ouverture de « Quit the game? ».
 - **Vibrations du jeu (rumble)** : la manette virtuelle déclare une fonction
   `Rumble` ; le jeu y envoie ses vibrations comme à toute manette
   (`desktop_wpad.cpp`, réglages Rumble et Strength de la page Controls) ; elles
@@ -302,7 +302,7 @@ essayé), **À faire**, **Abandonné**.
 - `SDL_HINT_TOUCH_MOUSE_EVENTS=0` pendant le jeu, sinon la Wiimote
   clavier-souris lirait aussi les touchers.
 - Journal : « Touch controls: on / default|custom layout, N % opacity /
-  virtual gamepad N attached / drawing on … / shown|hidden / Quitter ».
+  virtual gamepad N attached / drawing on … / shown|hidden / Quit ».
 
 ### 4.7 Sortie
 
@@ -517,8 +517,6 @@ gestion de l'appareil.
   bouton « Installer ». Pour une pull request : mises à jour masquées,
   signalées comme limite connue.
 - Pull requests vers `main` du projet d'origine (§ 9).
-- Traduire en anglais les libellés des contrôles tactiles (« Tacle »,
-  « Changer », « Quitter le jeu ? », Annuler, Quitter).
 - À la fin du portage : regrouper l'historique de `ios-port` en un commit
   par fonctionnalité (compilation iOS, fichiers dans Documents, plein écran,
   launcher tactile, contrôles tactiles, éditeur de disposition, vibrations,
@@ -563,8 +561,7 @@ le mainteneur accepte le port dans le dépôt d'origine (2026-11-13).
   autour des sorties de version.
 
 Préparation : branches partant de `main`, une par pull request ; `ctest
---preset debug` et Build binaries verts (§ 6.2) ; libellés tactiles en
-anglais ; des tests pour `touch_layout`.
+--preset debug` et Build binaries verts (§ 6.2) ; des tests pour `touch_layout`.
 
 ## 10. Historique
 
@@ -603,7 +600,8 @@ anglais ; des tests pour `touch_layout`.
   reporté), carte Updates réécrite (toujours masquée sur iOS). Build iOS,
   Build binaries (toutes les plateformes) et `ctest --preset debug` (61/61)
   passent à `2704410`. Le mainteneur accepte le port : plan des pull
-  requests au § 9.
+  requests au § 9. Libellés des contrôles tactiles traduits en anglais
+  (« Hit », « Swap », « Quit the game? »).
 
 ## 11. Suivi des travaux
 
@@ -638,3 +636,4 @@ renommés au format du projet le même jour).
 | L22 | 11-12 | « Mouse pointer » masqué quand le joueur 1 est l'écran tactile, où il ne change rien (masqué aussi pour « Keyboard & mouse », comme à l'origine : la souris y pointe déjà) | `d0ca827` | Appareil : masqué avec Touch screen, visible avec la DualSense | Terminé |
 | L23 | 11-12 | Repli sur l'écran tactile quand aucune manette configurée n'est là au lancement (au lieu du clavier et de la souris), texte du launcher adapté | `40b53c5` | Appareil : DualSense éteinte, l'écran tactile joue ; allumée, elle joue sans contrôles tactiles ; Touch screen inchangé | Terminé |
 | L24 | 11-14 | Fusion de `main` du projet d'origine (1.1.7) dans `ios-port` : 3 conflits dans `src/launcher/main.cpp` (inclusions, `CurrentBuild()` déplacé dans `launcher/current_build.h` où le paquet `ios` est reporté, carte Updates réécrite et gardée masquée sur iOS) | `2704410` | CI : `.ipa` 1.1.7 ; Build binaries vert (Linux, Steam Deck, Windows, macOS) ; `ctest --preset debug` 61/61 ; appareil : la 1.1.7 tourne sur l'iPhone Duo | Terminé |
+| L25 | 11-14 | Libellés des contrôles tactiles en anglais, demandé pour les pull requests : « Tacle » → « Hit », « Changer » → « Swap » (noms déjà utilisés dans `controls.touch_layout`), « Quitter le jeu ? / L'application va se fermer. » → « Quit the game? / The app will close. », Annuler / Quitter → Cancel / Quit ; éditeur du launcher et journal (« Quit: … ») | ce commit | À essayer sur l'appareil (libellés dans leurs boutons) | En cours |
