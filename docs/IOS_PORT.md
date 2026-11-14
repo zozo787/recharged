@@ -652,6 +652,29 @@ le mainteneur accepte le port dans le dépôt d'origine (2026-11-13).
 Préparation : branches partant de `main`, une par pull request ; `ctest
 --preset debug` et Build binaries verts (§ 6.2) ; des tests pour `touch_layout`.
 
+**Découpage retenu** (2026-11-14) : ses cinq pull requests, avec le réseau,
+l'éditeur, les mises à jour et la documentation à part, et le launcher en
+deux. Une pull request = un commit du fork après le regroupement, qui
+compile seul ; le commit propre au fork (`IOS_PORT.md`, `ios.yml`) n'en
+fait partie d'aucune.
+
+| # | Pull request | Contenu | Après |
+|---|---|---|---|
+| 1 | Cible iOS, paquet, CI | CMake avec un seul test de plateforme partagé ; `Info.plist` ; `package_ios.py` sur la liste de `package_build.py` ; notices de licence ; job iOS dans `build.yml` (non bloquant, quatre modules) ; correctifs de compilation (`system_usage`, `hbm_debug`, `session_log`, `prepare_sqlite.py`) | — |
+| 2 | Dossiers, fenêtres, sortie | Documents ; fenêtres sans bordure ; paysage ; zone sûre du launcher ; défauts d'affichage ; quitter ferme l'app (« Reopen after the game » masqué) | 1 |
+| 3 | Réseau | NSURLSession ; `http` vers le serveur en ligne (`NSAllowsArbitraryLoads`) | 1 |
+| 4 | Contrôles tactiles | Manette virtuelle ; cœur de `touch_layout` et ses tests ; joueur « Touch screen » ; repli tactile ; croix et « Quit the game? » ; zone sûre (encoche) ; « Mouse pointer » masqué | 2 |
+| 5 | Éditeur de disposition | Éditeur ; opacité | 4 |
+| 6a | Import et fichiers | Sélecteur d'iOS ; liens vers Fichiers ; disque GameCube | 2 |
+| 6b | Launcher tactile | Défilement au doigt ; réglages masqués ; textes adaptés ; guide d'accueil iOS | 2 |
+| 7 | Vibrations | Tap ; rumble ; « Vibrate on press » ; arrêt du rumble quand les contrôles se masquent (à corriger d'abord) | 5 |
+| 8 | Mises à jour sur iOS | Paquets `.ipa` ; fenêtre avec « Open release page » ; carte Updates ; `.ipa` joint aux versions publiées (méthode à convenir : le job iOS, non bloquant, l'ajoute après la publication ?) | 3 |
+| 9 | Documentation | `docs/IOS.md` (nouveau : télécharger, signer et installer, premier démarrage, jeu et contrôles, mises à jour, journaux) ; `INSTALL.md` (renvoi comme pour le Steam Deck, ligne `.ipa`) ; `README.md` ; `FEATURES.md` (tactile) ; `SETTINGS.md` (clés iOS) ; `TROUBLESHOOTING.md` (app expirée, profil, journaux) | 8 |
+
+La page d'installation demandée « en chemin » vient avec la pull request 9,
+quand l'`.ipa` est publié avec les versions : la description de la pull
+request 1 le dira.
+
 ## 10. Historique
 
 - **2026-11-09** — Cible iOS dans CMake, `Info.plist`, packager, workflow ;
