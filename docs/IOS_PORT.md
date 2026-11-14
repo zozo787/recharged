@@ -574,7 +574,7 @@ L'`.ipa` arrive dans `build/ios-artifacts/`.
 Onglet Actions → **Build binaries** (`build.yml`, présent sur `stable`, donc
 avec « Run workflow ») → branche `ios-port`. Il compile Linux, Steam Deck,
 Windows, macOS et, avec la version de `build.yml` de `ios-port`, iOS (job
-`ios-arm64`, quatre modules, artefact `ios-arm64`) ; ses jobs macOS demandent des runners Apple Silicon,
+`ios-arm64`, quatre modules, artefact : l'`.ipa` lui-même) ; ses jobs macOS demandent des runners Apple Silicon,
 parfois indisponibles.
 
 `ctest --preset debug` (exigé pour une pull request), sous Linux : le preset
@@ -653,9 +653,12 @@ perte de contexte :
   brouillon, ouverte par le propriétaire) : elle lance Build binaries en
   `pull_request`, donc `test-build` (préversion `test-pr1-<commit>` dans
   les Releases du fork) puis `ios-attach`, qui doit y joindre l'`.ipa` et
-  sa ligne de `SHA256SUMS`. Vérifier le résultat, puis **fermer la pull
-  request sans la fusionner** (`test-builds.yml` supprime alors la
-  préversion et son étiquette).
+  sa ligne de `SHA256SUMS`. **Vérifié** sur `cb18946` : tous les jobs
+  verts, `draft release` sauté (normal en pull request), l'`.ipa`
+  (25,1 Mo, quatre modules) et sa somme dans `test-pr1-cb18946b4175`,
+  identique à celle de l'artefact. Reste à **fermer la pull request sans
+  la fusionner** (`test-builds.yml` supprime alors la préversion et son
+  étiquette).
 - Dans cette pull request, deux vérifications iOS : `Build binaries /
   ios-arm64 (pull_request)` (le job de `build.yml`, lancé par la pull
   request) et `iOS build / ios-arm64 (push)` (le `ios.yml` du fork, lancé
@@ -680,14 +683,6 @@ perte de contexte :
 
 - Essais sur d'autres iPhone (F16), dont un modèle à 3 Go (N3) ; iPhone 14
   Plus fait.
-- Essai de la notification de nouvelle version (F20, § 4.9) : publier dans
-  le fork une version de test (étiquette `v1.1.8`, publiée : ni brouillon
-  ni préversion, que la recherche ignore) avec un fichier `recharged-1.1.8-ios-arm64.ipa` ; au
-  démarrage, l'app 1.1.7 doit ouvrir « UPDATE AVAILABLE / Version 1.1.8 »,
-  et Open release page ouvrir la page de la version. Supprimer ensuite la version et son
-  étiquette. Fait le 2026-11-14 : fenêtre ouverte après avoir décoché
-  « pre-release » (§ 5). Côté projet d'origine : joindre l'`.ipa` aux
-  versions publiées.
 - Pull requests vers `main` du projet d'origine (§ 9).
 
 ## 9. Contribution au projet d'origine
@@ -725,7 +720,7 @@ le mainteneur accepte le port dans le dépôt d'origine (2026-11-13).
 - **Paquet** : `package_ios.py` prend **toute** sa liste de fichiers dans
   `package_build.py`, pour que les nouveaux fichiers suivent seuls.
 - **CMake** : un seul test de plateforme partagé au lieu d'ajouter iOS à
-  chaque test de système (les 7 fichiers `cmake/*.cmake` du § 4.1).
+  chaque test de système (les 9 fichiers `cmake/*.cmake` du § 4.1).
 - **Docs** : une courte page d'installation pour les joueurs dans le dépôt ;
   ce cahier des charges reste dans le fork (ou dans les descriptions des
   pull requests).
@@ -816,16 +811,17 @@ request 1 le dira.
   Mii », remise après l'essai en ligne) et les corrections de la revue ; chaque commit compile seul (launcher en mode iOS et Linux,
   build Linux et `ctest` complets). L'ancien historique est gardé sur
   la branche `archive/ios-port-2026-11-14`.
-- **2026-11-14 (soir)** — `ios-attach` (option B) ajouté au commit 1 ;
-  Build binaries vert sur `34f5891` (job iOS compris) ; installation
-  bloquée par un certificat révoqué côté SideStore, réglée (§ 5). Pull
-  request de test n° 1 du fork vers `stable` pour essayer `test-build` et
-  `ios-attach`.
 - **2026-11-14 (suite)** — Pull request 1 préparée dans le commit 1 : un
   seul test de système (`cmake/Platform.cmake`), `package_ios.py` sur
   `common_files()` de `package_build.py`, job iOS dans `build.yml` qui ne
   bloque aucune version (artefact hors de `recharged-*`), identifiant d'app
   neutre par défaut (le fork garde le sien par `ios.yml`).
+- **2026-11-14 (soir)** — `ios-attach` (option B) ajouté au commit 1 ;
+  Build binaries vert sur `34f5891` (job iOS compris) ; installation
+  bloquée par un certificat révoqué côté SideStore, réglée (§ 5). Pull
+  request de test n° 1 du fork vers `stable` : `test-build` et
+  `ios-attach` verts sur `cb18946`, l'`.ipa` (quatre modules, 25,1 Mo)
+  et sa ligne de `SHA256SUMS` dans la préversion `test-pr1-cb18946b4175`.
 
 ## 11. Suivi des travaux
 
@@ -890,5 +886,5 @@ branche `archive/ios-port-2026-11-14`).
 | L32 | 11-14 | Historique regroupé : un commit par pull request prévue, plus le commit propre au fork ; ancien historique gardé sur une branche | voir le tableau ci-dessus | Arbre final identique à `d136136` (sauf la phrase des Miis du guide d'accueil et les corrections de la revue) ; chaque commit compile (iOS et Linux), `ctest` 61/61 | Terminé |
 | L33 | 11-14 | Jeu en ligne sur iOS (réseau du jeu, sans changement de code) | — | Appareil : partie en ligne iPhone Duo contre Mac | Terminé |
 | L34 | 11-14 | Revue du portage : `IOS_PORT.md` retiré de l'app et des commentaires du code ; commentaire des libellés et indentation dans `touch_controls.cpp` ; identifiant d'app neutre noté pour la pull request 1 | commits 1, 4 et 6a du regroupement | Chaque commit compile (iOS et Linux), `ctest` ; CI iOS sur le dernier | En cours |
-| L35 | 11-14 | Pull request 1 : `cmake/Platform.cmake` (un seul test de système) ; `common_files()` partagé par `package_build.py` et `package_ios.py` ; job iOS dans `build.yml`, non bloquant, `.ipa` en artefact (hors des versions publiées jusqu'à la pull request 8) ; identifiant d'app neutre par défaut, celui du fork passé par `ios.yml` | commit 1 (`e728210`) et commit du fork | Local : `test_package_build.py` (29 tests), build Linux et `ctest` à chaque commit ; CI à `34f5891` : `ios.yml` (identifiant du fork gardé) et Build binaries, tous les jobs verts, `ios-arm64` en 11 min 30 avec le cache de `ios.yml` | Terminé |
-| L36 | 11-14 | `.ipa` de `build.yml` en artefact sans zip, et job `ios-attach` (option B) : l'`.ipa` et sa ligne de `SHA256SUMS` rejoignent la version en brouillon ou le build de test, sans que rien ne l'attende | commit 1 | Local : YAML lu, logique de l'étiquette et de `SHA256SUMS` essayée ; CI : pull request de test n° 1 du fork vers `stable` (Build binaries en `pull_request`, `test-build`, `ios-attach`) en cours | En cours |
+| L35 | 11-14 | Pull request 1 : `cmake/Platform.cmake` (un seul test de système) ; `common_files()` partagé par `package_build.py` et `package_ios.py` ; job iOS dans `build.yml`, non bloquant, `.ipa` en artefact (joint aux versions par `ios-attach`, L36) ; identifiant d'app neutre par défaut, celui du fork passé par `ios.yml` | commit 1 (`e728210`) et commit du fork | Local : `test_package_build.py` (29 tests), build Linux et `ctest` à chaque commit ; CI à `34f5891` : `ios.yml` (identifiant du fork gardé) et Build binaries, tous les jobs verts, `ios-arm64` en 11 min 30 avec le cache de `ios.yml` | Terminé |
+| L36 | 11-14 | `.ipa` de `build.yml` en artefact sans zip, et job `ios-attach` (option B) : l'`.ipa` et sa ligne de `SHA256SUMS` rejoignent la version en brouillon ou le build de test, sans que rien ne l'attende | commit 1 | Local : YAML lu, logique de l'étiquette et de `SHA256SUMS` essayée ; CI : pull request de test n° 1 du fork vers `stable` à `cb18946` : Build binaries vert, `test-build` puis `ios-attach` ; `.ipa` (25,1 Mo, quatre modules) et sa ligne de `SHA256SUMS` dans la préversion `test-pr1-cb18946b4175`, somme égale à celle de l'artefact. Le cas `release` (push sur `stable`) suit le même chemin, avec l'étiquette `v<version>` | Terminé |
