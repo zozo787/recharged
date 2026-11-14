@@ -15,8 +15,9 @@ techniques (pas de données personnelles, pas de citations d'échanges).
 
 - **Objet** : faire tourner Recharged (launcher et jeu) nativement sur iPhone
   et iPad, à partir de la branche `ios-port` du fork `zozo787/recharged`.
-- **Base** : `main` du projet d'origine (Recharged **1.1.7**, `3143dbf`),
-  fusionnée dans `ios-port` le 2026-11-14 (`a8a4cf3`, puis `3143dbf`) ; avant, `stable` 1.1.6
+- **Base** : `main` du projet d'origine (Recharged **1.1.7**, `b815953`),
+  fusionnée dans `ios-port` le 2026-11-14 (`a8a4cf3`, `3143dbf`, puis
+  `b815953`, qui fusionne la publication de `stable` sans changer le code) ; avant, `stable` 1.1.6
   (`84e9c7c`). Le mainteneur veut les pull requests vers `main` : `main` y
   est fusionnée à chaque avancée.
 - **Distribution** : `.ipa` non signé produit par la CI, signé et installé par
