@@ -17,6 +17,9 @@
 #include "launcher/current_build.h"
 #include "launcher/disc_search.h"
 #include "launcher/image_library.h"
+#if defined(MSCHARGED_PLATFORM_IOS)
+#include "launcher/ios_document_picker.h"
+#endif
 #include "launcher/issue_reporters.h"
 #include "launcher/match_presets.h"
 #include "launcher/online_gate.h"
@@ -371,9 +374,22 @@ constexpr const char* kSaveFile = "Strikers2";
 std::string FileUrl(const fs::path& path)
 {
     std::string generic = PathUtf8(fs::absolute(path));
+#if defined(MSCHARGED_PLATFORM_IOS)
+    // The form iOS gives for a folder (NSFileManager's Documents URL):
+    // /var/mobile/..., without the /private that $HOME carries, ending with
+    // a slash. The Files app opens the app's subfolders from it; not the
+    // app's top folder, whatever the form (OpenPath).
+    generic = PathUtf8(fs::absolute(path).lexically_normal());
+    if (generic.size() > 1 && generic.back() == '/') generic.pop_back();
+    if (generic.rfind("/private/var/", 0) == 0) generic.erase(0, std::string("/private").size());
+    if (std::error_code error; fs::is_directory(path, error)) generic += '/';
+#endif
 #ifdef _WIN32
     std::replace(generic.begin(), generic.end(), '\\', '/');
     std::string url = "file:///";
+#elif defined(MSCHARGED_PLATFORM_IOS)
+    // A folder of the app opens in the Files app (file:// URLs open nothing).
+    std::string url = "shareddocuments://";
 #else
     std::string url = "file://";
 #endif
@@ -2751,9 +2767,17 @@ private:
             std::lock_guard<std::mutex> lock(dialog_->mutex);
             dialog_->active = true;
         }
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS: its own picker (any file); the image is copied into the game folder.
+        (void)start;
+        (void)filters;
+        ShowImportFileDialog(DiscChosen, new std::shared_ptr<DialogResult>(dialog_), window_,
+                             PathUtf8(GameFolder().path));
+#else
         const std::string location = start.empty() ? std::string() : PathUtf8(start);
         SDL_ShowOpenFileDialog(DiscChosen, new std::shared_ptr<DialogResult>(dialog_), window_, filters,
                                int(std::size(filters)), location.empty() ? nullptr : location.c_str(), false);
+#endif
     }
 
     void PollResults()
@@ -2815,7 +2839,14 @@ private:
             {
                 dialog_->ready = false;
                 if (!dialog_->error.empty()) Notice(dialog_->error, NoticeKind::Error);
-                else if (!dialog_->path.empty()) SelectDisc(dialog_->path);
+                else if (!dialog_->path.empty())
+                {
+                    SelectDisc(dialog_->path);
+#if defined(MSCHARGED_PLATFORM_IOS)
+                    // The copy is in the game folder now: list it there.
+                    StartLibraryScan();
+#endif
+                }
             }
         }
         {
@@ -2954,7 +2985,20 @@ private:
 
     bool OpenPath(const fs::path& path)
     {
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // The Files app opens the app's subfolders from a link, but stays
+        // where it was for its top folder (Documents, "Recharged" in Files),
+        // whatever the link's form; no documented way exists. A link to the
+        // settings file there opens Files on that file, in that folder.
+        fs::path target = path;
+        if (std::error_code error; fs::equivalent(path, UserFolder(base_), error) && fs::exists(file_.path, error))
+            target = file_.path;
+        const std::string url = FileUrl(target);
+        platform::SessionLogLine("Open in Files: " + url);
+        if (!SDL_OpenURL(url.c_str()))
+#else
         if (!SDL_OpenURL(FileUrl(path).c_str()))
+#endif
         {
             Notice(std::string("Cannot open the folder: ") + SDL_GetError(), NoticeKind::Error);
             return false;
@@ -3897,7 +3941,12 @@ private:
         if (ImGui::InputTextWithHint("##save_folder", ("Default: " + default_folder).c_str(), &draft_.save_folder))
             dirty_ = true;
         ImGui::SameLine(0, Dp(10));
-        if (SecondaryButton("browse_saves", "Browse...", {Dp(118), ImGui::GetFrameHeight()}, !browsing && config_ok_,
+#if defined(MSCHARGED_PLATFORM_IOS)
+        const char* browse_saves = "Show";
+#else
+        const char* browse_saves = "Browse...";
+#endif
+        if (SecondaryButton("browse_saves", browse_saves, {Dp(118), ImGui::GetFrameHeight()}, !browsing && config_ok_,
                             Icon::Folder))
             BrowseFolder(FolderPurpose::SaveFolder);
         ImGui::SameLine(0, Dp(10));
@@ -4728,6 +4777,17 @@ private:
     // that exists); the system's choice when empty.
     void BrowseFolder(FolderPurpose purpose, const fs::path& start = {})
     {
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS has no folder dialog, and the app could not keep using a folder
+        // elsewhere: its folders are in the Files app, which this opens.
+        fs::path folder = start.empty() ? GameFolder().path : start;
+        if (purpose == FolderPurpose::SaveFolder) folder = ResolveSaveFolder(draft_, file_.path, base_);
+        std::error_code made;
+        fs::create_directories(folder, made);
+        if (OpenPath(folder))
+            Notice("Put your files in this folder with the Files app, then come back to Recharged.", NoticeKind::Info);
+        return;
+#endif
         {
             std::lock_guard<std::mutex> lock(folder_dialog_->mutex);
             folder_dialog_->active = true;
@@ -4999,7 +5059,12 @@ private:
         if (library_limited_)
             footer += std::string(footer.empty() ? "" : " ")
                 + "Only the first 2000 image files were looked at; select a folder closer to your images.";
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS: while the picker is open and the chosen image is copied in.
+        const char* choose = candidate_pending_ ? "Checking the file..." : DialogActive() ? "Importing..." : "Choose file...";
+#else
         const char* choose = candidate_pending_ ? "Checking the file..." : "Choose file...";
+#endif
         const ImVec2 button{GhostWidth(choose, Icon::Disc), Dp(34)};
         const ImVec2 at = ImGui::GetCursorScreenPos();
         const float width = ImGui::GetContentRegionAvail().x;
@@ -5036,7 +5101,11 @@ private:
         const bool can_select = !browsing && config_ok_;
 
         // Controls on the right, from the edge inwards.
+#if defined(MSCHARGED_PLATFORM_IOS)
+        const char* change = "Open in Files";
+#else
         const char* change = "Change...";
+#endif
         const char* subfolders = "Subfolders";
         const float change_w = TextSize(fonts.body, change).x + Dp(32);
         const float change_x = max.x - Dp(12) - change_w;
@@ -8020,9 +8089,17 @@ private:
         const fs::path current = draft_.gamecube_disc.empty() ? fs::path()
                                                               : ResolveGameCubeDiscPath(draft_, file_.path);
         const fs::path start = !current.empty() ? current.parent_path() : ResolveGameFolder(draft_, file_.path);
+#if defined(MSCHARGED_PLATFORM_IOS)
+        // iOS: its own picker (any file); the image is copied into the game folder.
+        (void)start;
+        (void)filters;
+        ShowImportFileDialog(DiscChosen, new std::shared_ptr<DialogResult>(gamecube_dialog_), window_,
+                             PathUtf8(ResolveGameFolder(draft_, file_.path)));
+#else
         const std::string location = PathUtf8(start);
         SDL_ShowOpenFileDialog(DiscChosen, new std::shared_ptr<DialogResult>(gamecube_dialog_), window_, filters,
                                int(std::size(filters)), location.empty() ? nullptr : location.c_str(), false);
+#endif
     }
 
     void GameCubeDiscChosen(const fs::path& path)
@@ -8046,7 +8123,10 @@ private:
         if (Toggle("##tweak_super_team", &draft_.tweaks[index]))
         {
             dirty_ = true;
+#if !defined(MSCHARGED_PLATFORM_IOS)
+            // iOS: no picker on the switch; "Choose image..." below opens it.
             if (draft_.tweaks[index] && draft_.gamecube_disc.empty()) BrowseGameCubeDisc();
+#endif
         }
         if (!draft_.tweaks[index]) return;
         BeginSubRows();
@@ -8429,7 +8509,11 @@ private:
         { std::lock_guard<std::mutex> lock(folder_dialog_->mutex); browsing = folder_dialog_->active; }
         const bool can_select = !browsing && config_ok_ && draft_.texture_packs;
 
+#if defined(MSCHARGED_PLATFORM_IOS)
+        const char* change = "Open in Files";
+#else
         const char* change = "Change...";
+#endif
         const char* open = "Open";
         const float change_w = TextSize(fonts.body, change).x + Dp(32);
         const float open_w = GhostWidth(open, Icon::Folder);
