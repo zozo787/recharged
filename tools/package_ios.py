@@ -10,7 +10,8 @@ Layout of Recharged.app (SDL_GetBasePath is the app folder itself):
   Frameworks/recharged_game_{us,eu,jp,kr}.so   the game modules (one per game version;
                                                  --regions keeps only those built)
   assets/, README.md, docs/...                   what every package holds beside its program
-                                                 (package_build.py's common_files)
+                                                 (package_build.py's common_files; welcome.md is
+                                                 assets/launcher/welcome-ios.md)
   LICENSE, LICENSES/...                          this port's and the dependencies' notices,
                                                  with each Rust crate's in LICENSES/rust
 """
@@ -139,6 +140,8 @@ def package_ios(build, output, source, regions=REGIONS):
         # What every package holds beside its program (package_build.py).
         for root, relative in common_files(build, source):
             copy(root, relative)
+        # The welcome guide written for iPhone and iPad, in place of the desktop one.
+        copy(source, "assets/launcher/welcome-ios.md", "assets/launcher/welcome.md")
         for dependency in DEPENDENCIES:
             root = build / "prepared" / dependency
             if dependency == "mscharged-decomp":
