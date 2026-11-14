@@ -88,11 +88,11 @@ essayé), **À faire**, **Abandonné**.
 | F13 | Manette Bluetooth (MFi, DualSense, Xbox…) ; elle remplace les contrôles tactiles quand elle se connecte | Validé (DualSense, iPhone Duo et iPad Pro M5) |
 | F14 | Quitter le jeu depuis l'écran tactile, avec confirmation | Validé (ferme l'app, § 5) |
 | F15 | Jeu fluide (60 FPS) sur l'appareil de test | Validé (120 FPS possible) |
-| F16 | Fonctionne sur les autres iPhone et iPad sous iOS 18+ | iPad Pro M5 et iPhone 14 Plus validés (contrôles hors de l'encoche : à vérifier) ; autres iPhone à tester |
+| F16 | Fonctionne sur les autres iPhone et iPad sous iOS 18+ | iPad Pro M5 et iPhone 14 Plus (encoche) validés ; autres iPhone à tester |
 | F17 | Disque GameCube de l'option Super Team importable | Validé (iPhone Duo ; sur iOS, le sélecteur ne s'ouvre qu'avec « Choose image… ») |
 | F18 | Vibration légère à chaque appui sur un contrôle tactile, désactivable | Validé (iPhone Duo ; sans effet sur iPad, sans Taptic Engine) |
 | F19 | Vibrations du jeu (rumble de la Wiimote) ressenties dans l'iPhone avec l'écran tactile | Validé (iPhone Duo : réalistes en jeu) |
-| F20 | Nouvelle version signalée comme sur PC (barre de la page Play, fenêtre des mises à jour), version iOS : télécharger le nouvel `.ipa`, pas d'installation | Fait (essai avec une version de test du fork à faire) |
+| F20 | Nouvelle version signalée comme sur PC (barre de la page Play, fenêtre des mises à jour), version iOS : télécharger le nouvel `.ipa`, pas d'installation | Validé (iPhone Duo : version de test `v1.1.8` du fork) |
 
 ### 3.2 Non fonctionnelles
 
@@ -455,6 +455,10 @@ porte ce nom), `update_install.cpp` (`InstallBlocker` sous garde iOS).
   joue ; virtuelle, elle ne masque pas les contrôles tactiles.
 - **Joueurs en ligne, mises à jour, rapports de match indisponibles** →
   libcurl absent sur iOS : NSURLSession (§ 4.9).
+- **Version de test du fork ignorée** → publiée en préversion : le launcher
+  n'offre les préversions que comme builds de test de pull request
+  (étiquettes `test-pr…`, `update_check.cpp`). Décocher « Set as a
+  pre-release ».
 - **Joueurs en ligne absents malgré NSURLSession** (« App Transport Security
   policy requires the use of a secure connection » dans le journal) → le
   serveur en ligne est en `http` : `NSAllowsArbitraryLoads` (§ 4.9).
@@ -578,7 +582,9 @@ gestion de l'appareil.
   ni préversion, que la recherche ignore) avec un fichier `recharged-1.1.8-ios-arm64.ipa` ; au
   démarrage, l'app 1.1.7 doit ouvrir « UPDATE AVAILABLE / Version 1.1.8 »,
   et Open release page ouvrir la page de la version. Supprimer ensuite la version et son
-  étiquette. Côté projet d'origine : joindre l'`.ipa` aux versions publiées.
+  étiquette. Fait le 2026-11-14 : fenêtre ouverte après avoir décoché
+  « pre-release » (§ 5). Côté projet d'origine : joindre l'`.ipa` aux
+  versions publiées.
 - Pull requests vers `main` du projet d'origine (§ 9).
 - À la fin du portage : regrouper l'historique de `ios-port` en un commit
   par fonctionnalité (compilation iOS, fichiers dans Documents, plein écran,
@@ -708,6 +714,6 @@ renommés au format du projet le même jour).
 | L24 | 11-14 | Fusion de `main` du projet d'origine (1.1.7) dans `ios-port` : 3 conflits dans `src/launcher/main.cpp` (inclusions, `CurrentBuild()` déplacé dans `launcher/current_build.h` où le paquet `ios` est reporté, carte Updates réécrite et gardée masquée sur iOS) | `2704410` | CI : `.ipa` 1.1.7 ; Build binaries vert (Linux, Steam Deck, Windows, macOS) ; `ctest --preset debug` 61/61 ; appareil : la 1.1.7 tourne sur l'iPhone Duo | Terminé |
 | L25 | 11-14 | Libellés des contrôles tactiles en anglais, demandé pour les pull requests : « Tacle » → « Hit », « Changer » → « Swap » (noms déjà utilisés dans `controls.touch_layout`), « Quitter le jeu ? / L'application va se fermer. » → « Quit the game? / The app will close. », Annuler / Quitter → Cancel / Quit ; éditeur du launcher et journal (« Quit: … ») | `f09c27b` | Appareil : libellés dans leurs boutons, Cancel et Quit, éditeur | Terminé |
 | L26 | 11-14 | Guide d'accueil propre à iOS (`assets/launcher/welcome-ios.md`), mis par le paquet à la place du guide de bureau ; textes vérifiés contre le launcher actuel | `14af582` | À essayer sur l'appareil (ampoule à côté de Revert) | En cours |
-| L27 | 11-14 | Réseau sur iOS par NSURLSession (mises à jour, joueurs en ligne, rapports de match) ; paquets `.ipa` reconnus dans les versions publiées (test) ; barre et fenêtre des mises à jour comme sur PC, avec la page de la version au lieu de l'installation ; carte Updates de la page Advanced | `383f2f8` `59c5ee7` `3042d68` | Linux : `ctest --preset debug` 61/61 ; appareil : barre des mises à jour revenue ; compteur de joueurs absent (serveur en `http`, à voir) ; version de test du fork à publier | En cours |
-| L28 | 11-14 | Contrôles tactiles hors de l'encoche : placés entre les marges latérales de la zone sûre, dans le jeu et dans l'éditeur | `d8f552d` | Appareil : iPhone 14 Plus (contrôles sous l'encoche avant) | En cours |
-| L29 | 11-14 | Joueurs en ligne et rapports de match : `http` vers le serveur en ligne autorisé (App Transport Security, `NSAllowsArbitraryLoads`) | ce commit | Appareil : compteur de joueurs absent avant (journal : App Transport Security) | En cours |
+| L27 | 11-14 | Réseau sur iOS par NSURLSession (mises à jour, joueurs en ligne, rapports de match) ; paquets `.ipa` reconnus dans les versions publiées (test) ; barre et fenêtre des mises à jour comme sur PC, avec la page de la version au lieu de l'installation ; carte Updates de la page Advanced | `383f2f8` `59c5ee7` `3042d68` | Linux : `ctest --preset debug` 61/61 ; appareil : barre des mises à jour revenue, fenêtre « UPDATE AVAILABLE / Version 1.1.8 » avec la version de test du fork | Terminé |
+| L28 | 11-14 | Contrôles tactiles hors de l'encoche : placés entre les marges latérales de la zone sûre, dans le jeu et dans l'éditeur | `d8f552d` | Appareil : iPhone 14 Plus, plus rien sous l'encoche ; iPhone Duo inchangé | Terminé |
+| L29 | 11-14 | Joueurs en ligne et rapports de match : `http` vers le serveur en ligne autorisé (App Transport Security, `NSAllowsArbitraryLoads`) | `4aea56c` | Appareil : compteur de joueurs affiché (iPhone Duo, iPhone 14 Plus) | Terminé |
