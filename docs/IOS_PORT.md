@@ -15,8 +15,8 @@ techniques (pas de données personnelles, pas de citations d'échanges).
 
 - **Objet** : faire tourner Recharged (launcher et jeu) nativement sur iPhone
   et iPad, à partir de la branche `ios-port` du fork `zozo787/recharged`.
-- **Base** : `main` du projet d'origine (Recharged **1.1.7**, `a8a4cf3`),
-  fusionnée dans `ios-port` le 2026-11-14 ; avant, `stable` 1.1.6
+- **Base** : `main` du projet d'origine (Recharged **1.1.7**, `3143dbf`),
+  fusionnée dans `ios-port` le 2026-11-14 (`a8a4cf3`, puis `3143dbf`) ; avant, `stable` 1.1.6
   (`84e9c7c`). Le mainteneur veut les pull requests vers `main` : `main` y
   est fusionnée à chaque avancée.
 - **Distribution** : `.ipa` non signé produit par la CI, signé et installé par
@@ -665,7 +665,9 @@ Préparation : branches partant de `main`, une par pull request ; `ctest
   `CurrentBuild()` déplacé dans `launcher/current_build.h` (paquet `ios`
   reporté), carte Updates réécrite (toujours masquée sur iOS). Build iOS,
   Build binaries (toutes les plateformes) et `ctest --preset debug` (61/61)
-  passent à `2704410`. Le mainteneur accepte le port : plan des pull
+  passent à `2704410`. 1.1.7 publiée sur `stable` (`053746f`) ; `main`
+  refusionnée (`3143dbf` : clics gauche et droit réaffectables, sans conflit).
+  Le mainteneur accepte le port : plan des pull
   requests au § 9. Libellés des contrôles tactiles traduits en anglais
   (« Hit », « Swap », « Quit the game? »). Guide d'accueil propre à iOS.
   Réseau par NSURLSession et notification de nouvelle version comme sur PC
