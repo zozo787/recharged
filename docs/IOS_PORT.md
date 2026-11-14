@@ -40,8 +40,9 @@ techniques (pas de données personnelles, pas de citations d'échanges).
   ou `revert`, et le domaine `ios` (par exemple `fix(ios): ...`). **Pas de
   numéro d'issue** dans les commits du fork : GitHub les relierait à
   l'issue #163 du projet d'origine et les afficherait dans sa discussion.
-  Le numéro (`(#163)`) ne s'ajoute qu'aux commits d'une pull request vers le
-  projet d'origine, comme son `CONTRIBUTING.md` le demande.
+  Le numéro ne va que dans le titre d'une pull request vers le projet
+  d'origine (`feat(ios): … (iOS and iPad OS port #163)`, § 9), qui devient
+  son commit.
   Un changement = **un seul commit** `feat(ios)` / `fix(ios)` avec le code
   et sa documentation (conception, pièges, suivi décrit sans son propre
   identifiant), au message qui décrit le changement. Le résultat d'un essai
@@ -59,8 +60,9 @@ techniques (pas de données personnelles, pas de citations d'échanges).
   `CONTRIBUTING.md` demande une issue d'abord pour les gros changements, une
   modification par pull request, `ctest --preset debug` qui passe, les
   changements du jeu sous forme de patchs, et accepte l'aide d'une IA si
-  l'auteur assume le résultat. Proposition en cours : issue
-  [#163](https://github.com/previouslevelgames/recharged/issues/163).
+  l'auteur assume le résultat. Issue
+  [#163](https://github.com/previouslevelgames/recharged/issues/163) : port
+  accepté, pull requests vers `main` (§ 9).
 
 ## 3. Exigences
 
@@ -95,8 +97,8 @@ essayé), **À faire**, **Abandonné**.
 
 | # | Exigence | Statut |
 |---|---|---|
-| N1 | Linux, Steam Deck, Windows et macOS compilent avec les changements du portage | Validé : macOS à `2289565` (après le dernier changement partagé) ; Linux, Steam Deck, Windows à `86f05e3` (plus ancien, à refaire avant une pull request) |
-| N2 | `ctest --preset debug` passe | À faire (exigé pour une pull request) |
+| N1 | Linux, Steam Deck, Windows et macOS compilent avec les changements du portage | Validé à `2704410` (1.1.7) : Linux, Steam Deck, Windows, macOS x86_64, arm64 et universel (Build binaries) |
+| N2 | `ctest --preset debug` passe | Validé à `2704410` (1.1.7) : 61 tests sur 61, sous Linux (Clang 18) |
 | N3 | Mémoire suffisante sur les modèles à 3 Go (iPhone XR, SE 2) | À tester |
 | N4 | Notices de licence des crates Rust dans l'app | Validé (CI : 64 crates couvertes, `LICENSES/rust/<crate>-<version>`) |
 | N5 | Build CI d'environ 10 min avec les caches | Validé (7 à 10 min ; ~30 min à froid) |
@@ -442,8 +444,29 @@ L'`.ipa` arrive dans `build/ios-artifacts/`.
 Onglet Actions → **Build binaries** (`build.yml`, présent sur `stable`, donc
 avec « Run workflow ») → branche `ios-port`. Il compile Linux, Steam Deck,
 Windows et macOS ; ses jobs macOS demandent des runners Apple Silicon,
-parfois indisponibles. Avant une pull request : aussi `ctest --preset
-debug`.
+parfois indisponibles.
+
+`ctest --preset debug` (exigé pour une pull request), sous Linux : le preset
+`debug` compile le launcher et les outils, sans le jeu ni image du jeu.
+
+```sh
+sudo apt-get install -y clang cmake ninja-build make tcl pkg-config \
+  libasound2-dev libpulse-dev libx11-dev libxext-dev libxrandr-dev \
+  libxcursor-dev libxi-dev libxfixes-dev libxss-dev libxtst-dev \
+  libx11-xcb-dev libegl-dev libwayland-dev libxkbcommon-dev \
+  wayland-protocols libdecor-0-dev libudev-dev libdbus-1-dev libvulkan-dev
+export CC=clang CXX=clang++
+python3 tools/setup_dependencies.py
+cmake --preset debug
+cmake --build --preset debug
+ctest --preset debug
+```
+
+Paquets repris du job Linux de `build.yml` ; Clang car le GCC d'Ubuntu
+24.04 (13) est trop ancien. `setup_dependencies.py --launcher` ne suffit
+pas pour `debug` (zlib-ng manque) : préparation complète. Dawn (hébergé
+chez Chromium) n'est pas nécessaire à ces tests si son téléchargement est
+bloqué.
 
 ### 6.3 Installer
 
@@ -493,7 +516,9 @@ gestion de l'appareil.
   `NSURLSession`), et une interface qui informe et donne le lien, sans
   bouton « Installer ». Pour une pull request : mises à jour masquées,
   signalées comme limite connue.
-- Pull request éventuelle (§ 9).
+- Pull requests vers `main` du projet d'origine (§ 9).
+- Traduire en anglais les libellés des contrôles tactiles (« Tacle »,
+  « Changer », « Quitter le jeu ? », Annuler, Quitter).
 - À la fin du portage : regrouper l'historique de `ios-port` en un commit
   par fonctionnalité (compilation iOS, fichiers dans Documents, plein écran,
   launcher tactile, contrôles tactiles, éditeur de disposition, vibrations,
@@ -503,13 +528,43 @@ gestion de l'appareil.
 ## 9. Contribution au projet d'origine
 
 Issue [#163](https://github.com/previouslevelgames/recharged/issues/163) :
-discussion en cours (iOS comme cible de plus dans leur CI, adaptations
-nécessaires, dépôt séparé ou non). Proposé : garder le code dans leur dépôt
-avec un job iOS non bloquant. Pour une pull request : repartir de `main`
-(copiée dans le fork), découper (cible CMake et CI, puis gardes de plateforme,
-puis tactile et launcher), ajouter des tests (`touch_layout` s'y prête),
-`ctest --preset debug`, traduire en anglais les libellés des contrôles,
-rendre configurables l'identifiant d'app et le runner.
+le mainteneur accepte le port dans le dépôt d'origine (2026-11-13).
+
+**Pull requests** vers `main` (pas `stable`), petites, dans cet ordre :
+
+1. Cible de build iOS, paquet et CI : un job iOS **dans `build.yml`**, que
+   les jobs de version et de build de test n'attendent pas (un build iOS en
+   échec ne bloque jamais une version).
+2. Dossiers de l'app et gestion des fenêtres.
+3. Contrôles tactiles comme choix de joueur.
+4. Changements du launcher.
+5. Vibrations.
+
+**Exigences du mainteneur** :
+
+- **Titres** : ils fusionnent en un seul commit (squash), le titre devient
+  le commit : format du projet avec le numéro de l'issue, par exemple
+  `feat(ios): touch controls (iOS and iPad OS port #163)`.
+- **HTTP** : sur les systèmes Apple, le launcher charge la libcurl du
+  système à l'exécution ; absente sur iOS, la recherche de mises à jour, les
+  joueurs en ligne et les rapports de match échouent : un système propre à
+  iOS (`NSURLSession`).
+- **Mises à jour** : `main` (1.1.7) installe les mises à jour toute seule et
+  ferme le jeu en ligne aux versions dépassées ; une app iOS ne peut pas se
+  remplacer : sur iOS, le launcher invite à installer le nouvel `.ipa`.
+- **Paquet** : `package_ios.py` prend **toute** sa liste de fichiers dans
+  `package_build.py`, pour que les nouveaux fichiers suivent seuls.
+- **CMake** : un seul test de plateforme partagé au lieu d'ajouter iOS à
+  chaque test de système (les 7 fichiers `cmake/*.cmake` du § 4.1).
+- **Docs** : une courte page d'installation pour les joueurs dans le dépôt ;
+  ce cahier des charges reste dans le fork (ou dans les descriptions des
+  pull requests).
+- **Après l'intégration** : surveiller le job iOS et tester sur appareil
+  autour des sorties de version.
+
+Préparation : branches partant de `main`, une par pull request ; `ctest
+--preset debug` et Build binaries verts (§ 6.2) ; libellés tactiles en
+anglais ; des tests pour `touch_layout`.
 
 ## 10. Historique
 
@@ -545,7 +600,10 @@ rendre configurables l'identifiant d'app et le runner.
 - **2026-11-14** — Fusion de `main` du projet d'origine (Recharged 1.1.7 :
   mises à jour forcées, jeu en ligne fermé aux versions dépassées, rollback) :
   `CurrentBuild()` déplacé dans `launcher/current_build.h` (paquet `ios`
-  reporté), carte Updates réécrite (toujours masquée sur iOS).
+  reporté), carte Updates réécrite (toujours masquée sur iOS). Build iOS,
+  Build binaries (toutes les plateformes) et `ctest --preset debug` (61/61)
+  passent à `2704410`. Le mainteneur accepte le port : plan des pull
+  requests au § 9.
 
 ## 11. Suivi des travaux
 
@@ -579,4 +637,4 @@ renommés au format du projet le même jour).
 | L21 | 11-12 | Disque GameCube (Super Team) : sur iOS, cocher l'option n'ouvre plus le sélecteur, seul « Choose image… » le fait | `42c58f1` | Appareil : correctif et chargement de l'image validés | Terminé |
 | L22 | 11-12 | « Mouse pointer » masqué quand le joueur 1 est l'écran tactile, où il ne change rien (masqué aussi pour « Keyboard & mouse », comme à l'origine : la souris y pointe déjà) | `d0ca827` | Appareil : masqué avec Touch screen, visible avec la DualSense | Terminé |
 | L23 | 11-12 | Repli sur l'écran tactile quand aucune manette configurée n'est là au lancement (au lieu du clavier et de la souris), texte du launcher adapté | `40b53c5` | Appareil : DualSense éteinte, l'écran tactile joue ; allumée, elle joue sans contrôles tactiles ; Touch screen inchangé | Terminé |
-| L24 | 11-14 | Fusion de `main` du projet d'origine (1.1.7) dans `ios-port` : 3 conflits dans `src/launcher/main.cpp` (inclusions, `CurrentBuild()` déplacé dans `launcher/current_build.h` où le paquet `ios` est reporté, carte Updates réécrite et gardée masquée sur iOS) | ce commit de fusion | Local : launcher compilé en mode iOS et Linux | En cours |
+| L24 | 11-14 | Fusion de `main` du projet d'origine (1.1.7) dans `ios-port` : 3 conflits dans `src/launcher/main.cpp` (inclusions, `CurrentBuild()` déplacé dans `launcher/current_build.h` où le paquet `ios` est reporté, carte Updates réécrite et gardée masquée sur iOS) | `2704410` | CI : `.ipa` 1.1.7 ; Build binaries vert (Linux, Steam Deck, Windows, macOS) ; `ctest --preset debug` 61/61 ; appareil : à essayer | En cours |
