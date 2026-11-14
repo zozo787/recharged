@@ -103,7 +103,7 @@ essayé), **À faire**, **Abandonné**.
 | N2 | `ctest --preset debug` passe | Validé à `2704410` (1.1.7) : 61 tests sur 61, sous Linux (Clang 18) |
 | N3 | Mémoire suffisante sur les modèles à 3 Go (iPhone XR, SE 2) | À tester |
 | N4 | Notices de licence des crates Rust dans l'app | Validé (CI : 64 crates couvertes, `LICENSES/rust/<crate>-<version>`) |
-| N5 | Build CI d'environ 10 min avec les caches | Validé avec le seul module EU (7 à 10 min ; ~30 min à froid) ; avec les quatre modules : à mesurer |
+| N5 | Build CI d'environ 10 min avec les caches | Validé (7 à 10 min ; ~30 min à froid ; module EU seul) |
 
 ### 3.3 Abandonné ou hors périmètre
 
@@ -141,8 +141,7 @@ essayé), **À faire**, **Abandonné**.
   `ios-port` (sauf `docs/**` et `**.md`), et à la main.
   Runner par défaut **`xcode-27`** (Xcode 27.2, SDK iOS 27.2, macOS 27 arm64,
   préversion GitHub) ; entrées `runner`, `xcode` (`newest` par défaut),
-  `regions` (`all` par défaut, les quatre modules de jeu ; ou `us`, `eu`,
-  `jp`, `kr`), et variables de dépôt
+  `regions` (`eu` par défaut ; `us`, `jp`, `kr`, `all`), et variables de dépôt
   `IOS_RUNNER`, `IOS_XCODE`, `IOS_REGIONS`. Une file par runner, sans annuler
   le build en cours. Caches : ccache (C, C++, Objective-C/C++), sources
   préparées et SQLite, Cargo. Refuse les données de jeu ; publie l'`.ipa` en
@@ -514,10 +513,8 @@ export PATH="$(brew --prefix tcl-tk)/bin:$PATH"
 rustup target add aarch64-apple-ios
 python3 tools/setup_dependencies.py
 cmake --preset ios-release --fresh
-cmake --build --preset ios-release --target mscharged mscharged_original_frontend_module_us \
-  mscharged_original_frontend_module_eu mscharged_original_frontend_module_jp \
-  mscharged_original_frontend_module_kr
-python3 tools/package_ios.py
+cmake --build --preset ios-release --target mscharged mscharged_original_frontend_module_eu
+python3 tools/package_ios.py --regions eu
 ```
 
 L'`.ipa` arrive dans `build/ios-artifacts/`.
@@ -621,7 +618,10 @@ le mainteneur accepte le port dans le dépôt d'origine (2026-11-13).
    les jobs de version et de build de test n'attendent pas (un build iOS en
    échec ne bloque jamais une version). Il compile les **quatre modules
    de jeu** (US, EU, JP, KR), comme les jobs Linux, Windows et macOS de
-   `build.yml` et comme `ios.yml` depuis le 2026-11-14.
+   `build.yml`. Le `ios.yml` du fork garde le seul module EU : il sert
+   aux essais du fork, sur une image européenne, avec des builds plus
+   courts. Un job iOS qui joint son `.ipa` aux versions publiées doit, lui,
+   servir toutes les versions du jeu.
 2. Dossiers de l'app et gestion des fenêtres.
 3. Contrôles tactiles comme choix de joueur.
 4. Changements du launcher.
@@ -696,8 +696,8 @@ Préparation : branches partant de `main`, une par pull request ; `ctest
   Réseau par NSURLSession et notification de nouvelle version comme sur PC
   (version iOS : la page de la version, d'où l'on prend l'`.ipa`) ;
   joueurs en ligne (`http` autorisé). Contrôles hors de l'encoche (iPhone
-  14 Plus). Textes du launcher adaptés à iOS. `ios.yml` compile les quatre
-  modules de jeu.
+  14 Plus). Textes du launcher adaptés à iOS. Le job iOS de la pull
+  request compilera les quatre modules de jeu ; `ios.yml` garde le module EU.
 
 ## 11. Suivi des travaux
 
@@ -738,4 +738,3 @@ renommés au format du projet le même jour).
 | L28 | 11-14 | Contrôles tactiles hors de l'encoche : placés entre les marges latérales de la zone sûre, dans le jeu et dans l'éditeur | `d8f552d` | Appareil : iPhone 14 Plus, plus rien sous l'encoche ; iPhone Duo inchangé | Terminé |
 | L29 | 11-14 | Joueurs en ligne et rapports de match : `http` vers le serveur en ligne autorisé (App Transport Security, `NSAllowsArbitraryLoads`) | `4aea56c` | Appareil : compteur de joueurs affiché (iPhone Duo, iPhone 14 Plus) | Terminé |
 | L30 | 11-14 | Textes du launcher adaptés à iOS : Tap, this device, Miis sans Dolphin, langue, image manquante, page Display (écran entier), niveaux sonores, packs de textures (zone de dépôt masquée, ajout par Open et Fichiers) ; textes de bureau inchangés | `7bae7f5` et ce commit | Local : launcher compilé en mode iOS et Linux, `ctest` 61/61 ; appareil : à relire | En cours |
-| L31 | 11-14 | `ios.yml` compile les quatre modules de jeu (US, EU, JP, KR) par défaut, comme `build.yml` : une seule `.ipa` pour toutes les versions du jeu | ce commit | CI : `.ipa` et sa taille à relever ; appareil : image EU inchangée | En cours |
