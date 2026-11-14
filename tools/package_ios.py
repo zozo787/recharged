@@ -10,6 +10,7 @@ Layout of Recharged.app (SDL_GetBasePath is the app folder itself):
   Frameworks/recharged_game_{us,eu,jp,kr}.so   the game modules (one per game version;
                                                  --regions keeps only those built)
   assets/...                                     what the desktop packages put beside the program
+                                                 (welcome.md: assets/launcher/welcome-ios.md)
   LICENSE, LICENSES/...                          this port's and the dependencies' notices,
                                                  with each Rust crate's in LICENSES/rust
 """
@@ -139,6 +140,8 @@ def package_ios(build, output, source, regions=REGIONS):
             (app / "Frameworks" / module).chmod(0o755)
         for asset in ASSETS:
             copy(build, Path("assets/launcher") / asset)
+        # The welcome guide written for iPhone and iPad, in place of the desktop one.
+        copy(source, "assets/launcher/welcome-ios.md", "assets/launcher/welcome.md")
         copy(build, "assets/graphics/initial_pipeline_cache.db")
         copy(source, "assets/graphics/README.md")
         copy(source, "assets/gameplay/robot_goalie.map")

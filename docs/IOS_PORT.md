@@ -158,8 +158,10 @@ essayé), **À faire**, **Abandonné**.
   celles de chaque crate Rust du graphe de `nod-ffi` pour la cible iOS
   (`LICENSES/rust/<crate>-<version>`, lues dans le cache de Cargo par les
   fonctions `cargo_packages` et `cached_crate` de `package_build.py`). Le
-  contrôle de la CI affiche le nombre de crates couvertes. Vérifie l'architecture et la plateforme des binaires ; option
-  `--regions`.
+  contrôle de la CI affiche le nombre de crates couvertes. Vérifie
+  l'architecture et la plateforme des binaires ; option `--regions`. Le guide
+  d'accueil de l'app est `assets/launcher/welcome-ios.md`, copié sous le nom
+  `assets/launcher/welcome.md` (§ 4.5).
 - **Info.plist** : iPhone et iPad, paysage, `UIRequiresFullScreen`, écran de
   lancement vide (résolution native), barre d'état masquée,
   `UIFileSharingEnabled` et `LSSupportsOpeningDocumentsInPlace` (Documents
@@ -235,6 +237,13 @@ essayé), **À faire**, **Abandonné**.
   comme souris ; la ligne reste pour une manette, utile avec une souris ou un
   trackpad sur iPad). Textes
   « NATIVE PORT » et « natively on iPhone and iPad » ; paquet `ios`.
+- **Guide d'accueil** (ampoule à côté de Revert, ouvert au premier
+  démarrage) : `assets/launcher/welcome-ios.md`, écrit pour iPhone et iPad
+  (import par « Choose file... », contrôles tactiles et leur éditeur, repli
+  sur l'écran tactile, croix pour quitter, rumble, fichiers dans Fichiers,
+  pas de mise à jour automatique). Le paquet le met à la place du guide de
+  bureau : le launcher n'est pas modifié. Jeu en ligne non promis (jamais
+  essayé sur iOS).
 - **Joueurs** : choix « Touch screen » (`controls.playerN = touch`, iOS
   seulement ; défaut joueur 1), avec le bouton de l'éditeur de disposition.
 
@@ -601,7 +610,7 @@ Préparation : branches partant de `main`, une par pull request ; `ctest
   Build binaries (toutes les plateformes) et `ctest --preset debug` (61/61)
   passent à `2704410`. Le mainteneur accepte le port : plan des pull
   requests au § 9. Libellés des contrôles tactiles traduits en anglais
-  (« Hit », « Swap », « Quit the game? »).
+  (« Hit », « Swap », « Quit the game? »). Guide d'accueil propre à iOS.
 
 ## 11. Suivi des travaux
 
@@ -637,3 +646,4 @@ renommés au format du projet le même jour).
 | L23 | 11-12 | Repli sur l'écran tactile quand aucune manette configurée n'est là au lancement (au lieu du clavier et de la souris), texte du launcher adapté | `40b53c5` | Appareil : DualSense éteinte, l'écran tactile joue ; allumée, elle joue sans contrôles tactiles ; Touch screen inchangé | Terminé |
 | L24 | 11-14 | Fusion de `main` du projet d'origine (1.1.7) dans `ios-port` : 3 conflits dans `src/launcher/main.cpp` (inclusions, `CurrentBuild()` déplacé dans `launcher/current_build.h` où le paquet `ios` est reporté, carte Updates réécrite et gardée masquée sur iOS) | `2704410` | CI : `.ipa` 1.1.7 ; Build binaries vert (Linux, Steam Deck, Windows, macOS) ; `ctest --preset debug` 61/61 ; appareil : la 1.1.7 tourne sur l'iPhone Duo | Terminé |
 | L25 | 11-14 | Libellés des contrôles tactiles en anglais, demandé pour les pull requests : « Tacle » → « Hit », « Changer » → « Swap » (noms déjà utilisés dans `controls.touch_layout`), « Quitter le jeu ? / L'application va se fermer. » → « Quit the game? / The app will close. », Annuler / Quitter → Cancel / Quit ; éditeur du launcher et journal (« Quit: … ») | `f09c27b` | Appareil : libellés dans leurs boutons, Cancel et Quit, éditeur | Terminé |
+| L26 | 11-14 | Guide d'accueil propre à iOS (`assets/launcher/welcome-ios.md`), mis par le paquet à la place du guide de bureau ; textes vérifiés contre le launcher actuel | ce commit | À essayer sur l'appareil (ampoule à côté de Revert) | En cours |
