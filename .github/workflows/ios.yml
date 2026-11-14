@@ -1,0 +1,247 @@
+name: iOS build
+
+# The iOS/iPadOS port (docs/IOS_PORT.md): cross-compiled on a macOS runner with
+# the ios-release preset, packaged as an unsigned .ipa. Signing happens when it
+# is installed. No game data: the disc image is read on the device at run time.
+on:
+  # Documentation alone does not rebuild the app.
+  push:
+    branches: [ios-port]
+    paths-ignore: ['docs/**', '**.md']
+  pull_request:
+    branches: [ios-port]
+    paths-ignore: ['docs/**', '**.md']
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: macOS runner label (macos-15-intel, macos-15, macos-26, or a newer image)
+        type: string
+        default: xcode-27
+      xcode:
+        description: Xcode to build with (a version such as 26.3, or newest on the runner)
+        type: string
+        default: newest
+      regions:
+        description: Game modules to build (eu, us, jp, kr, space-separated, or all)
+        type: string
+        default: eu
+
+permissions:
+  contents: read
+
+# A new push waits for the running build instead of cancelling it: a cold build
+# takes hours, and its compiler cache is what makes the next one quick.
+# Per runner, so a build on another image can run beside the usual one.
+concurrency:
+  group: ios-${{ github.workflow }}-${{ github.ref }}-${{ inputs.runner || 'default' }}
+  cancel-in-progress: false
+
+jobs:
+  ios:
+    name: ios-arm64
+    # xcode-27: GitHub's Xcode 27 image (public preview, arm64, macOS 27). Its
+    # iOS 27 SDK is needed for the iPhone Duo: an app built with an older
+    # SDK runs there in a 16:9 compatibility frame. Older images, e.g. when
+    # Apple Silicon runners are scarce: macos-15-intel (Xcode 26.3) by hand,
+    # or the repository variable IOS_RUNNER.
+    runs-on: ${{ inputs.runner || vars.IOS_RUNNER || 'xcode-27' }}
+    timeout-minutes: 330
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_TERM_COLOR: always
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_NOHASHDIR: 'true'
+      CCACHE_MAXSIZE: 3G
+      # One module per game version; pushes build only the European one
+      # (repository variable IOS_REGIONS, e.g. "all").
+      IOS_REGIONS: ${{ inputs.regions || vars.IOS_REGIONS || 'eu' }}
+      # No IPHONEOS_DEPLOYMENT_TARGET here: Apple's clang reads it for every
+      # compile, so the tools the build runs on this Mac (SQLite's generator,
+      # Rust build scripts) would come out as iOS programs that cannot run.
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+          submodules: false
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # The disc image and the game's files stay on the player's device.
+      - name: Refuse committed game data
+        run: |
+          if git ls-files | grep -iE '\.(iso|gcm|rvz|wia|wbfs|ciso|gcz|tgc|nfs|dol|elf)$'; then
+            echo "Game data is committed; remove it from Git (and its history)." >&2
+            exit 1
+          fi
+          if git ls-files game | grep -v '^game/\.gitkeep$'; then
+            echo "Only game/.gitkeep belongs in Git." >&2
+            exit 1
+          fi
+      - name: Install macOS tools
+        env:
+          XCODE: ${{ inputs.xcode || vars.IOS_XCODE || 'newest' }}
+        run: |
+          uname -m
+          # The newest Xcode on the image by default: its iOS SDK must know the
+          # newest devices, or iOS runs the app in a compatibility frame (the
+          # iPhone Duo, docs/IOS_PORT.md). A version can be asked for.
+          ls -d /Applications/Xcode*.app
+          if [ "$XCODE" = newest ]; then
+            xcode=$(ls -d /Applications/Xcode_[0-9]*.app | grep -v -i beta | sort -V | tail -1)
+          else
+            xcode=/Applications/Xcode_$XCODE.app
+          fi
+          echo "Selected: $xcode"
+          sudo xcode-select -s "$xcode"
+          xcrun --sdk iphoneos --show-sdk-version
+          clang++ --version
+          brew install cmake ninja tcl-tk ccache
+          echo "$(brew --prefix tcl-tk)/bin" >> "$GITHUB_PATH"
+          echo 'CC=clang' >> "$GITHUB_ENV"
+          echo 'CXX=clang++' >> "$GITHUB_ENV"
+      - name: Select Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add aarch64-apple-ios
+          cargo --version
+      - name: Prepare pinned dependencies
+        run: python tools/setup_dependencies.py --shallow
+      # One job per core: 4 on the Intel runner, 3 on Apple Silicon.
+      - name: Place compiler cache
+        run: |
+          echo "CCACHE_DIR=$RUNNER_TEMP/ccache" >> "$GITHUB_ENV"
+          cores=$(sysctl -n hw.ncpu)
+          echo "CMAKE_BUILD_PARALLEL_LEVEL=$cores" >> "$GITHUB_ENV"
+          echo "CARGO_BUILD_JOBS=$cores" >> "$GITHUB_ENV"
+          echo "Cores: $cores"
+      # The prepared (patched) dependency sources and SQLite's generated
+      # amalgamation depend only on the pinned submodules, the patches and the
+      # preparation tools: preparing them took most of the configure step. The
+      # preparers check what they find and redo anything that does not match.
+      - name: Key the prepared sources
+        id: prepared
+        run: |
+          key=$( { git ls-tree -r HEAD extern; git ls-files -s patches tools/prepare_sources.py \
+                   tools/prepare_sqlite.py tools/format_prepared.py .gitmodules; } | shasum -a 256 | cut -c1-24)
+          echo "key=prepared-ios-${{ runner.arch }}-$key" >> "$GITHUB_OUTPUT"
+      - name: Restore prepared sources
+        id: prepared-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            build/ios-release/prepared
+            build/ios-release/generated/sqlite-source
+          key: ${{ steps.prepared.outputs.key }}
+      # nod's Rust build (crates and their compiled output), resumed by Cargo.
+      - name: Restore Rust build
+        id: cargo-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            build/ios-release/cargo
+          key: cargo-ios-${{ runner.arch }}-${{ steps.prepared.outputs.key }}-${{ github.sha }}
+          restore-keys: cargo-ios-${{ runner.arch }}-${{ steps.prepared.outputs.key }}-
+      - name: Restore compiler cache
+        id: ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ccache-ios-arm64-${{ runner.arch }}-${{ github.sha }}
+          restore-keys: ccache-ios-arm64-${{ runner.arch }}-
+      # A dev build: no update channel (iOS apps do not replace themselves) and
+      # no Discord status. The fork's own app identifier, so that the installed
+      # app (and its settings and saves) stays the same.
+      - name: Configure for iOS
+        run: >-
+          cmake --preset ios-release
+          -DMSCHARGED_FORMAT_PREPARED_SOURCES=OFF
+          -DMSCHARGED_BUILD_CHANNEL=dev
+          -DMSCHARGED_BUILD_REPOSITORY=${{ github.repository }}
+          -DMSCHARGED_BUILD_RUN=${{ github.run_id }}
+          -DMSCHARGED_BUILD_TIME=$(date -u +%s)
+          -DMSCHARGED_AUTOPILOT=OFF
+          -DMSCHARGED_IOS_BUNDLE_IDENTIFIER=io.github.zozo787.recharged
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          -DCMAKE_OBJC_COMPILER_LAUNCHER=ccache
+          -DCMAKE_OBJCXX_COMPILER_LAUNCHER=ccache
+      - name: Build for iOS
+        run: |
+          case "$IOS_REGIONS" in all) regions="us eu jp kr" ;; *) regions="$IOS_REGIONS" ;; esac
+          targets=mscharged
+          for region in $regions; do
+            case "$region" in us|eu|jp|kr) ;; *) echo "Unknown region: $region" >&2; exit 1 ;; esac
+            targets="$targets mscharged_original_frontend_module_$region"
+          done
+          echo "Targets: $targets"
+          cmake --build --preset ios-release --target $targets
+      - name: Compiler cache statistics
+        if: always()
+        run: ccache --show-stats || true
+      # Also after a failed build: the next run resumes from it.
+      - name: Save compiler cache
+        if: always() && steps.ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ steps.ccache.outputs.cache-primary-key }}
+      - name: Save prepared sources
+        if: always() && steps.prepared-cache.outputs.cache-hit != 'true' && hashFiles('build/ios-release/prepared/**/manifest.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            build/ios-release/prepared
+            build/ios-release/generated/sqlite-source
+          key: ${{ steps.prepared.outputs.key }}
+      - name: Save Rust build
+        if: always() && steps.cargo-cache.outputs.cache-hit != 'true' && hashFiles('build/ios-release/cargo/**') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            build/ios-release/cargo
+          key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+      - name: Package the unsigned .ipa
+        run: >-
+          python tools/package_ios.py --build-dir build/ios-release --output-dir build/ios-artifacts
+          --regions ${{ env.IOS_REGIONS }}
+      - name: Check the app
+        run: |
+          app=build/ios-artifacts/Recharged.app
+          plutil -lint "$app/Info.plist"
+          lipo -archs "$app/recharged"
+          vtool -show-build "$app/recharged" | tee /dev/stderr | grep -q 'platform IOS$'
+          for module in "$app"/Frameworks/recharged_game_*; do
+            file "$module"
+          done
+          # Unresolved imports of the incomplete decomp bind lazily in the
+          # module (-undefined dynamic_lookup); list how many for the record.
+          for module in "$app"/Frameworks/recharged_game_*; do
+            echo "$module: $(nm -u "$module" | wc -l) undefined symbols"
+          done
+          # Each Rust crate's license texts (tools/package_ios.py, rust_notices).
+          echo "Rust license notices: $(ls "$app/LICENSES/rust" | grep -vc '^Cargo.lock$') crates"
+          du -sh "$app" build/ios-artifacts/*.ipa
+      - name: Upload the .ipa
+        uses: actions/upload-artifact@v7
+        with:
+          path: build/ios-artifacts/*.ipa
+          archive: false
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload configure diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: configure-ios-arm64-${{ github.sha }}
+          path: |
+            build/ios-release/CMakeFiles/CMakeConfigureLog.yaml
+            build/ios-release/sqlite-generation.log
+          if-no-files-found: ignore
+          retention-days: 7
