@@ -1179,7 +1179,16 @@ private:
     // after Check for updates; the dialog shows the download. A release that
     // stays behind plays offline: the game's main menu keeps Online closed
     // (launcher/online_gate.h). Local builds keep the choice.
-    bool EnforcedUpdates() const { return updates_ && !update_preview_ && EnforcesUpdates(updates_->Build()); }
+    // iOS: an app cannot replace itself, so the update dialog offers the new
+    // .ipa instead (InstallBlocker), as it does to any copy that cannot update.
+    bool EnforcedUpdates() const
+    {
+#if defined(MSCHARGED_PLATFORM_IOS)
+        return false;
+#else
+        return updates_ && !update_preview_ && EnforcesUpdates(updates_->Build());
+#endif
+    }
 
     // Why an enforced update did not come in (DrawUpdateProblem).
     enum class UpdateProblem { None, CheckFailed, Failed, Cancelled, Blocked };
@@ -2174,8 +2183,14 @@ private:
         }
         else if (!status.install_blocker.empty() && !busy)
         {
+#if defined(MSCHARGED_PLATFORM_IOS)
+            Callout(status.install_blocker + " Get the new .ipa from the release page and install it the way you "
+                    "installed this one (SideStore, AltStore, Sideloadly...).",
+                    color::muted, Icon::Info);
+#else
             Callout(status.install_blocker + " Download the package and unpack it over this folder instead.",
                     color::muted, Icon::Info);
+#endif
             ImGui::Dummy({0, Dp(18)});
         }
         const bool ask_to_save = status.state == State::Installed && dirty_;
@@ -2219,7 +2234,12 @@ private:
             const std::string page = offer.test && status.pull && !status.pull->page.empty() ? status.pull->page
                                                                                              : offer.page;
             const char* github = "View on GitHub";
-            if (!page.empty())
+#if defined(MSCHARGED_PLATFORM_IOS)
+            const bool github_link = false; // the release page is the action itself (below)
+#else
+            const bool github_link = !page.empty();
+#endif
+            if (github_link)
             {
                 if (GhostButton("update_github", github, {GhostWidth(github, Icon::GitHub), height}, true,
                                 Icon::GitHub))
@@ -2227,23 +2247,33 @@ private:
                 if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", page.c_str());
             }
             const char* action = nullptr;
+#if defined(MSCHARGED_PLATFORM_IOS)
+            // The release page, where the player picks up the .ipa.
+            const bool release_page = !page.empty();
+            if (release_page) action = "Open release page";
+#else
+            const bool release_page = false;
             if (status.install_blocker.empty())
                 action = status.state == State::InstallFailed ? "Try again"
                     : kind == OfferKind::Update               ? "Update now"
                                                               : "Switch now";
             else if (asset) action = "Download";
+#endif
             const char* later = "Later";
             const float later_width = GhostWidth(later, Icon::None);
-            const float action_width = action ? PrimaryWidth(action, Icon::Download) : 0.0f;
+            const float action_width = action ? PrimaryWidth(action, release_page ? Icon::GitHub : Icon::Download)
+                                              : 0.0f;
             align_right(later_width + (action ? Dp(10) + action_width : 0.0f));
             if (GhostButton("update_later", later, {later_width, height}) || CancelPressed())
                 DismissUpdateDialog();
             if (action)
             {
                 ImGui::SameLine(0, Dp(10));
-                if (PrimaryButton("update_now", action, {action_width, height}, true, Icon::Download))
+                if (PrimaryButton("update_now", action, {action_width, height}, true,
+                                  release_page ? Icon::GitHub : Icon::Download))
                 {
-                    if (status.install_blocker.empty())
+                    if (release_page) SDL_OpenURL(page.c_str());
+                    else if (status.install_blocker.empty())
                     {
                         // Its pull request is followed from now on, also after it is released.
                         if (offer.test && draft_.test_build != offer.pull_request)
@@ -3358,9 +3388,7 @@ private:
             DrawLabelShadowed(draw, fonts.heading, {origin.x + pad, y + FontSize(fonts.heading) + Dp(2)},
                               Col(color::text, 0.86f), rest + 2, 1.2f);
         }
-#if !defined(MSCHARGED_PLATFORM_IOS) // an iOS app does not update itself
         DrawUpdateBar(origin, size.x, pad);
-#endif
 
         // Play button and status, over the bottom of the artwork.
         const std::string blocker = PlayBlocker();
@@ -8962,10 +8990,14 @@ private:
         }
         EndCard();
 
-#if !defined(MSCHARGED_PLATFORM_IOS) // an iOS app does not update itself
         BeginCard("##updates", "Updates",
+#if defined(MSCHARGED_PLATFORM_IOS)
+                  "Each start of the launcher looks for a newer build; install its .ipa the way you installed this "
+                  "one. A release plays online only while it is the newest one.",
+#else
                   "Each start of the launcher installs a newer build by itself. A release plays online only while "
                   "it is the newest one.",
+#endif
                   Icon::Download);
         if (BeginRows("##update_rows"))
         {
@@ -8977,7 +9009,6 @@ private:
             EndRows();
         }
         EndCard();
-#endif
 
         BeginCard("##graphics", "Graphics", nullptr, Icon::Display);
         if (BeginRows("##graphics_rows"))
