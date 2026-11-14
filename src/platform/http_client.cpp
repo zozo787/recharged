@@ -15,8 +15,74 @@
 #define NOMINMAX
 #include <windows.h>
 #include <winhttp.h>
+#elif defined(MSCHARGED_PLATFORM_IOS)
+// iOS has no libcurl: NSURLSession (this file is compiled as Objective-C++
+// there, cmake/Http.cmake).
+#import <Foundation/Foundation.h>
 #else
 #include <dlfcn.h>
+#endif
+
+#if defined(MSCHARGED_PLATFORM_IOS)
+// One transfer's NSURLSession events, on the session's own queue: the body in
+// pieces, the status, a redirect away from https refused, and the end.
+@interface RechargedHttpDelegate : NSObject <NSURLSessionDataDelegate>
+@property(nonatomic, copy) BOOL (^onData)(NSData* data); // NO stops the transfer
+@property(nonatomic, copy) void (^onProgress)(int64_t received, int64_t total);
+@property(nonatomic, strong) dispatch_semaphore_t done;
+@property(nonatomic, strong) NSError* error;
+@property(nonatomic) long status;
+@property(nonatomic) int64_t expected;
+@property(nonatomic) int64_t received;
+@property(nonatomic) BOOL stopped;
+@property(nonatomic) BOOL redirectRefused;
+@end
+
+@implementation RechargedHttpDelegate
+- (void)URLSession:(NSURLSession*)session
+              dataTask:(NSURLSessionDataTask*)task
+    didReceiveResponse:(NSURLResponse*)response
+     completionHandler:(void (^)(NSURLSessionResponseDisposition))completion
+{
+    if ([response isKindOfClass:NSHTTPURLResponse.class]) self.status = ((NSHTTPURLResponse*)response).statusCode;
+    self.expected = response.expectedContentLength > 0 ? response.expectedContentLength : 0;
+    completion(NSURLSessionResponseAllow);
+}
+
+- (void)URLSession:(NSURLSession*)session dataTask:(NSURLSessionDataTask*)task didReceiveData:(NSData*)data
+{
+    if (self.stopped) return;
+    self.received += int64_t(data.length);
+    if (!self.onData(data))
+    {
+        self.stopped = YES;
+        [task cancel];
+        return;
+    }
+    if (self.onProgress) self.onProgress(self.received, self.expected);
+}
+
+// Redirects stay https, as with libcurl and WinHTTP.
+- (void)URLSession:(NSURLSession*)session
+                          task:(NSURLSessionTask*)task
+    willPerformHTTPRedirection:(NSHTTPURLResponse*)response
+                    newRequest:(NSURLRequest*)request
+             completionHandler:(void (^)(NSURLRequest*))completion
+{
+    if ([request.URL.scheme caseInsensitiveCompare:@"https"] == NSOrderedSame) completion(request);
+    else
+    {
+        self.redirectRefused = YES;
+        completion(nil);
+    }
+}
+
+- (void)URLSession:(NSURLSession*)session task:(NSURLSessionTask*)task didCompleteWithError:(NSError*)error
+{
+    self.error = error;
+    dispatch_semaphore_signal(self.done);
+}
+@end
 #endif
 
 namespace mscharged::platform
@@ -29,7 +95,7 @@ using Sink = std::function<void(const char* data, std::size_t size)>;
 bool HttpsUrl(const std::string& url) { return url.rfind("https://", 0) == 0; }
 bool HttpUrl(const std::string& url) { return url.rfind("http://", 0) == 0; }
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(MSCHARGED_PLATFORM_IOS)
 // libcurl's stable easy interface (libcurl.so.4 / libcurl.4.dylib). The
 // option numbers are part of its ABI and are checked against curl.h.
 constexpr int kCurlUrl = 10002, kCurlWriteFunction = 20011, kCurlWriteData = 10001, kCurlUserAgent = 10018,
@@ -99,7 +165,7 @@ const CurlApi& Curl()
     });
     return api;
 }
-#else
+#elif defined(_WIN32)
 std::wstring Wide(const std::string& text)
 {
     if (text.empty()) return {};
@@ -172,6 +238,8 @@ public:
             {
 #ifdef _WIN32
                 return RunWinHttp(counted);
+#elif defined(MSCHARGED_PLATFORM_IOS)
+                return RunUrlSession(counted);
 #else
                 return RunCurl(counted);
 #endif
@@ -302,6 +370,94 @@ private:
         }
         return long(status);
     }
+#elif defined(MSCHARGED_PLATFORM_IOS)
+    // NSURLSession, waited for on this thread: the body reaches the sink from
+    // the session's queue while this thread only waits, and checks for a
+    // cancel every 100 ms. Nothing is thrown inside the autorelease pool.
+    long RunUrlSession(const Sink& sink)
+    {
+        std::exception_ptr failure;
+        std::string message;
+        bool cancelled = false, timed_out = false, refused = false;
+        long status = 0;
+        @autoreleasepool
+        {
+            NSURL* url = [NSURL URLWithString:[NSString stringWithUTF8String:request_.url.c_str()]];
+            if (!url) message = "Not a valid address: " + request_.url;
+            else
+            {
+                NSMutableURLRequest* request = [NSMutableURLRequest requestWithURL:url];
+                request.HTTPMethod = [NSString stringWithUTF8String:request_.method.c_str()];
+                if (request_.method != "GET")
+                    request.HTTPBody = [NSData dataWithBytes:request_.body.data() length:request_.body.size()];
+                [request setValue:[NSString stringWithUTF8String:request_.user_agent.c_str()]
+                    forHTTPHeaderField:@"User-Agent"];
+                for (const auto& header : request_.headers)
+                {
+                    const auto colon = header.find(':');
+                    if (colon == std::string::npos) continue;
+                    const auto start = header.find_first_not_of(' ', colon + 1);
+                    const std::string value = start == std::string::npos ? std::string() : header.substr(start);
+                    [request setValue:[NSString stringWithUTF8String:value.c_str()]
+                        forHTTPHeaderField:[NSString stringWithUTF8String:header.substr(0, colon).c_str()]];
+                }
+                NSURLSessionConfiguration* configuration = NSURLSessionConfiguration.ephemeralSessionConfiguration;
+                // Seconds without data before the transfer fails; NSURLSession
+                // has no separate connection timeout.
+                configuration.timeoutIntervalForRequest = std::max(request_.connect_timeout, request_.stall_timeout);
+                const Sink* target = &sink;
+                std::exception_ptr* stored = &failure;
+                HttpTransfer* transfer = this;
+                RechargedHttpDelegate* delegate = [RechargedHttpDelegate new];
+                delegate.done = dispatch_semaphore_create(0);
+                delegate.onData = ^BOOL(NSData* data) {
+                    __block BOOL ok = YES;
+                    [data enumerateByteRangesUsingBlock:^(const void* bytes, NSRange range, BOOL* stop) {
+                        try
+                        {
+                            (*target)(static_cast<const char*>(bytes), range.length);
+                        }
+                        catch (...)
+                        {
+                            *stored = std::current_exception();
+                            ok = NO;
+                            *stop = YES;
+                        }
+                    }];
+                    return ok;
+                };
+                delegate.onProgress = ^(int64_t received, int64_t total) {
+                    transfer->Report(std::uint64_t(received), std::uint64_t(total));
+                };
+                NSOperationQueue* queue = [NSOperationQueue new];
+                queue.maxConcurrentOperationCount = 1;
+                NSURLSession* session = [NSURLSession sessionWithConfiguration:configuration
+                                                                      delegate:delegate
+                                                                 delegateQueue:queue];
+                NSURLSessionDataTask* task = [session dataTaskWithRequest:request];
+                Report(0, 0);
+                [task resume];
+                while (dispatch_semaphore_wait(delegate.done, dispatch_time(DISPATCH_TIME_NOW, 100 * NSEC_PER_MSEC)) != 0)
+                    if (Cancelled()) [task cancel];
+                [session finishTasksAndInvalidate];
+                status = delegate.status;
+                refused = delegate.redirectRefused;
+                if (NSError* error = delegate.error)
+                {
+                    cancelled = error.code == NSURLErrorCancelled;
+                    timed_out = error.code == NSURLErrorTimedOut;
+                    const char* text = error.localizedDescription.UTF8String;
+                    message = text ? text : "the request failed";
+                }
+            }
+        }
+        if (failure) std::rethrow_exception(failure);
+        if (Cancelled() || cancelled) throw HttpError("Cancelled", true);
+        if (refused) throw HttpError("A redirect left https: " + request_.url);
+        if (timed_out) throw HttpError("the connection timed out");
+        if (!message.empty()) throw HttpError(message);
+        return status;
+    }
 #else
     struct CurlContext
     {
@@ -417,7 +573,7 @@ void HttpCancel::Cancel()
 
 std::string HttpUnavailable()
 {
-#ifdef _WIN32
+#if defined(_WIN32) || defined(MSCHARGED_PLATFORM_IOS)
     return {};
 #else
     const auto& curl = Curl();
