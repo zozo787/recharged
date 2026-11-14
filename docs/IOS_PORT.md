@@ -15,9 +15,10 @@ techniques (pas de données personnelles, pas de citations d'échanges).
 
 - **Objet** : faire tourner Recharged (launcher et jeu) nativement sur iPhone
   et iPad, à partir de la branche `ios-port` du fork `zozo787/recharged`.
-- **Base** : Recharged **1.1.6** (`stable` du projet d'origine, `84e9c7c`),
-  fusionnée dans `ios-port` ; chaque nouvelle version de `stable` y est
-  fusionnée.
+- **Base** : `main` du projet d'origine (Recharged **1.1.7**, `a8a4cf3`),
+  fusionnée dans `ios-port` le 2026-11-14 ; avant, `stable` 1.1.6
+  (`84e9c7c`). Le mainteneur veut les pull requests vers `main` : `main` y
+  est fusionnée à chaque avancée.
 - **Distribution** : `.ipa` non signé produit par la CI, signé et installé par
   chacun avec son identifiant Apple (Sideloadly, AltStore, SideStore, Xcode).
   Pas d'App Store.
@@ -225,7 +226,8 @@ essayé), **À faire**, **Abandonné**.
   image (marges à 0 hors iOS, mise en page inchangée). Barre latérale :
   couleur sous la marge, contenu décalé ; page et barre du bas avant les
   marges droite et basse ; l'illustration de la page Play va jusqu'au bord.
-- **Masqué sur iOS** : carte Screen, mises à jour, Discord, « Log window »,
+- **Masqué sur iOS** : carte Screen, mises à jour (barre de la page Play et
+  carte Updates), Discord, « Log window »,
   carte Wii Remote, « Reopen after the game », imports Dolphin ; « Mouse
   pointer » quand le joueur 1 est l'écran tactile (le doigt pointe toujours
   comme souris ; la ligne reste pour une manette, utile avec une souris ou un
@@ -398,6 +400,13 @@ apparentées).
   joueur 1 au clavier et à la souris, absents d'un iPhone, et les contrôles
   tactiles n'existaient pas : partie sans commandes ni croix pour quitter.
   Repli sur l'écran tactile (§ 4.6).
+- **Mises à jour forcées de la 1.1.7** (installation automatique, jeu en
+  ligne fermé à une version officielle dépassée ou qui n'a pas pu vérifier)
+  → ne concernent que les builds `release` et `test`
+  (`EnforcesUpdates`, `GatesOnline`, `launcher/online_gate.cpp`) ; l'`.ipa`
+  de la CI est une build `dev` (`MSCHARGED_BUILD_CHANNEL=dev`) : ni
+  installation, ni blocage. Le paquet est `ios-arm64`
+  (`launcher/current_build.h`).
 - **« Run workflow » absent** pour un workflow propre à `ios-port` → GitHub ne
   l'affiche que pour les workflows de la branche par défaut (`stable`).
 - **Envoi de l'`.ipa` en échec** (« Unexpected token '<', "<!DOCTYPE "… is
@@ -477,7 +486,7 @@ gestion de l'appareil.
 ## 8. Reste à faire
 
 - Essais sur d'autres iPhone (F16), dont un modèle à 3 Go (N3).
-- Piste : notification de nouvelle version (sans installation, impossible
+- Piste, demandée par le mainteneur : notification de nouvelle version (sans installation, impossible
   sur iOS : app en lecture seule, signée, qui ne peut ni se remplacer ni se
   relancer). Demanderait des versions iOS publiées (un paquet `ios-arm64`
   joint aux releases), un accès réseau sur iOS (libcurl absent : passer par
@@ -533,6 +542,10 @@ rendre configurables l'identifiant d'app et le runner.
   masqué pour l'écran tactile (`d0ca827`). Repli sur l'écran tactile quand
   aucune manette configurée n'est là (`40b53c5`). Retour au launcher sans
   fermer l'app abandonné.
+- **2026-11-14** — Fusion de `main` du projet d'origine (Recharged 1.1.7 :
+  mises à jour forcées, jeu en ligne fermé aux versions dépassées, rollback) :
+  `CurrentBuild()` déplacé dans `launcher/current_build.h` (paquet `ios`
+  reporté), carte Updates réécrite (toujours masquée sur iOS).
 
 ## 11. Suivi des travaux
 
@@ -566,3 +579,4 @@ renommés au format du projet le même jour).
 | L21 | 11-12 | Disque GameCube (Super Team) : sur iOS, cocher l'option n'ouvre plus le sélecteur, seul « Choose image… » le fait | `42c58f1` | Appareil : correctif et chargement de l'image validés | Terminé |
 | L22 | 11-12 | « Mouse pointer » masqué quand le joueur 1 est l'écran tactile, où il ne change rien (masqué aussi pour « Keyboard & mouse », comme à l'origine : la souris y pointe déjà) | `d0ca827` | Appareil : masqué avec Touch screen, visible avec la DualSense | Terminé |
 | L23 | 11-12 | Repli sur l'écran tactile quand aucune manette configurée n'est là au lancement (au lieu du clavier et de la souris), texte du launcher adapté | `40b53c5` | Appareil : DualSense éteinte, l'écran tactile joue ; allumée, elle joue sans contrôles tactiles ; Touch screen inchangé | Terminé |
+| L24 | 11-14 | Fusion de `main` du projet d'origine (1.1.7) dans `ios-port` : 3 conflits dans `src/launcher/main.cpp` (inclusions, `CurrentBuild()` déplacé dans `launcher/current_build.h` où le paquet `ios` est reporté, carte Updates réécrite et gardée masquée sur iOS) | ce commit de fusion | Local : launcher compilé en mode iOS et Linux | En cours |
