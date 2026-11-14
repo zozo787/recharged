@@ -793,7 +793,7 @@ int mscharged::RunOriginalGame(int argc, char** argv,
         // mouse to fall back on), and go once the input owner has decided.
         std::optional<mscharged::runtime::TouchControls> touchControls;
         if(nativeSend) {
-            touchControls.emplace(launch.settings.touch_layout,launch.settings.touch_opacity); // the launcher's layout editor
+            touchControls.emplace(launch.settings.touch_layout,launch.settings.touch_opacity,launch.settings.touch_haptics); // the launcher's layout editor
             players.touch_id=touchControls->JoystickId();
         }
 #endif

@@ -1,5 +1,6 @@
 #include "runtime/touch_controls.h"
 
+#include "runtime/touch_haptics.h"
 
 #include "platform/session_log.h"
 
@@ -83,9 +84,10 @@ void Log(const char* format, ...)
 }
 } // namespace
 
-TouchControls::TouchControls(const std::string& layout, int opacity)
+TouchControls::TouchControls(const std::string& layout, int opacity, bool haptics)
     : placements_(ParseTouchLayout(layout)),
-      opacity_(float(std::clamp(opacity, kMinTouchOpacity, kMaxTouchOpacity)) / 100.0f)
+      opacity_(float(std::clamp(opacity, kMinTouchOpacity, kMaxTouchOpacity)) / 100.0f),
+      haptics_(haptics)
 {
     if (const char* hint = SDL_GetHint(SDL_HINT_TOUCH_MOUSE_EVENTS)) {
         hadHint_ = true;
@@ -97,7 +99,8 @@ TouchControls::TouchControls(const std::string& layout, int opacity)
     gamepads_ = SDL_InitSubSystem(SDL_INIT_GAMEPAD);
     watching_ = SDL_AddEventWatch(Watch, this);
     Log(watching_ ? "on" : "no event watch: %s", SDL_GetError());
-    Log("%s layout, %d %% opacity", layout.empty() ? "default" : "custom", int(std::lround(opacity_ * 100)));
+    Log("%s layout, %d %% opacity, vibrate on press %s", layout.empty() ? "default" : "custom",
+        int(std::lround(opacity_ * 100)), haptics_ ? "on" : "off");
     // Now, before the input owner sets up the players: the touch player's
     // channel goes to this virtual gamepad's id (platform/hardware_owner.cpp).
     Attach();
@@ -165,6 +168,13 @@ void TouchControls::Attach()
     desc.button_mask = (1u << SDL_GAMEPAD_BUTTON_COUNT) - 1;
     desc.axis_mask = (1u << SDL_GAMEPAD_AXIS_COUNT) - 1;
     desc.name = "Recharged touch controls";
+    // The game's rumble reaches this gamepad as any other's (desktop_wpad.cpp,
+    // scaled by controls.rumble_strength, off with controls.rumble): the
+    // device's Taptic Engine plays it.
+    desc.Rumble = [](void*, Uint16 low, Uint16 high) {
+        TouchRumble(float(std::max(low, high)) / 65535.0f);
+        return true;
+    };
     id_ = SDL_AttachVirtualJoystick(&desc);
     if (!id_) {
         Log("no virtual gamepad: %s", SDL_GetError());
@@ -182,6 +192,7 @@ void TouchControls::Attach()
 
 void TouchControls::Detach()
 {
+    TouchRumble(0);
     if (joystick_) SDL_CloseJoystick(joystick_);
     if (id_) SDL_DetachVirtualJoystick(id_);
     joystick_ = nullptr;
@@ -278,7 +289,12 @@ void TouchControls::Service(float width, float height, float left, float right)
         visible_ = visible;
         ++revision_;
         if (visible) Log("shown");
-        else Log("hidden: %s plays instead", physical.c_str());
+        else {
+            Log("hidden: %s plays instead", physical.c_str());
+            // The game's rumble goes to the controller now: the iPhone's
+            // looping vibration would otherwise go on (touch_haptics.mm).
+            TouchRumble(0);
+        }
     }
     if (!visible_) {
         {
@@ -399,6 +415,7 @@ void TouchControls::Service(float width, float height, float left, float right)
     if (pressed[Quit] && !quitWasPressed_ && !confirming_) {
         confirming_ = true;
         ++revision_;
+        if (haptics_) TouchHapticTap();
     }
     quitWasPressed_ = pressed[Quit];
     pressed[Quit] = false;
@@ -418,6 +435,13 @@ void TouchControls::Service(float width, float height, float left, float right)
     if (pressed != pressed_ || stickActive != stickActive_ || knobX != knobX_ || knobY != knobY_
         || stickX != stickX_ || stickY != stickY_)
         ++revision_;
+    // One light tap for the controls pressed in this frame (not those held).
+    if (haptics_)
+        for (int n = 0; n < ControlCount; ++n)
+            if (pressed[n] && !pressed_[n]) {
+                TouchHapticTap();
+                break;
+            }
     pressed_ = pressed;
     stickActive_ = stickActive;
     stickX_ = stickX, stickY_ = stickY, knobX_ = knobX, knobY_ = knobY;
