@@ -249,7 +249,9 @@ essayé), **À faire**, **Abandonné**.
   tête, notes de format et de résolution sur l'écran entier, mesuré en
   pixels par la fenêtre du launcher : `PictureScreen`, `GameFillsScreen`) ;
   carte Display de la page Play (« Full screen ») ; niveaux sonores ;
-  packs de textures (dossier rempli avec Fichiers, pas de glisser-déposer).
+  packs de textures : pas de glisser-déposer dans l'app, la zone « Drop a
+  texture pack here » est masquée, le bouton Open montre le dossier dans
+  Fichiers, où l'on met le dossier du pack.
   « How well the computer plays » (l'IA) reste ; les infobulles (survol à la
   souris) ne s'affichent pas sur iOS.
 - **Guide d'accueil** (ampoule à côté de Revert, ouvert au premier
@@ -730,4 +732,4 @@ renommés au format du projet le même jour).
 | L27 | 11-14 | Réseau sur iOS par NSURLSession (mises à jour, joueurs en ligne, rapports de match) ; paquets `.ipa` reconnus dans les versions publiées (test) ; barre et fenêtre des mises à jour comme sur PC, avec la page de la version au lieu de l'installation ; carte Updates de la page Advanced | `383f2f8` `59c5ee7` `3042d68` | Linux : `ctest --preset debug` 61/61 ; appareil : barre des mises à jour revenue, fenêtre « UPDATE AVAILABLE / Version 1.1.8 » avec la version de test du fork, Open release page ouvre sa page (version et étiquette supprimées ensuite) | Terminé |
 | L28 | 11-14 | Contrôles tactiles hors de l'encoche : placés entre les marges latérales de la zone sûre, dans le jeu et dans l'éditeur | `d8f552d` | Appareil : iPhone 14 Plus, plus rien sous l'encoche ; iPhone Duo inchangé | Terminé |
 | L29 | 11-14 | Joueurs en ligne et rapports de match : `http` vers le serveur en ligne autorisé (App Transport Security, `NSAllowsArbitraryLoads`) | `4aea56c` | Appareil : compteur de joueurs affiché (iPhone Duo, iPhone 14 Plus) | Terminé |
-| L30 | 11-14 | Textes du launcher adaptés à iOS : Tap, this device, Miis sans Dolphin, langue, image manquante, page Display (écran entier), niveaux sonores, packs de textures ; textes de bureau inchangés | ce commit | Local : launcher compilé en mode iOS et Linux, `ctest` 61/61 ; appareil : à relire | En cours |
+| L30 | 11-14 | Textes du launcher adaptés à iOS : Tap, this device, Miis sans Dolphin, langue, image manquante, page Display (écran entier), niveaux sonores, packs de textures (zone de dépôt masquée, ajout par Open et Fichiers) ; textes de bureau inchangés | `7bae7f5` et ce commit | Local : launcher compilé en mode iOS et Linux, `ctest` 61/61 ; appareil : à relire | En cours |

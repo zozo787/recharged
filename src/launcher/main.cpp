@@ -8597,8 +8597,8 @@ private:
         {
 #if defined(MSCHARGED_PLATFORM_IOS)
             // No drag and drop into the app: the Files app puts packs in the folder.
-            Row("Texture packs", "Texture packs made for Dolphin, from the folder below: put a pack's folder there "
-                                 "with the Files app.");
+            Row("Texture packs", "Texture packs made for Dolphin, from the folder below: Open shows it in the Files "
+                                 "app, where you put a pack's folder (such as R4Q).");
 #else
             Row("Texture packs", "Texture packs made for Dolphin, from the folder below. Drop a pack's folder or .zip "
                                  "file onto this page to add it.");
@@ -8619,8 +8619,10 @@ private:
                                    "Drag a pack to change the order: where two packs replace the same texture, the "
                                    "higher one wins.");
         }
+#if !defined(MSCHARGED_PLATFORM_IOS) // no drag and drop into the app: Open shows the folder in Files
         else if (pack_copy_name_.empty())
             PackDropZone();
+#endif
         ImGui::EndDisabled();
 
         ImGui::Dummy({0, Dp(6)});
@@ -8783,13 +8785,8 @@ private:
         const float cx = pos.x + width * 0.5f;
         draw->AddCircleFilled({cx, pos.y + Dp(30)}, Dp(17), Col(color::accent, 0.12f));
         DrawIcon(draw, Icon::Download, {cx, pos.y + Dp(30)}, Dp(18), Col(color::accent));
-#if defined(MSCHARGED_PLATFORM_IOS)
-        const char* title = "No texture pack yet";
-        const char* detail = "Put a pack's folder (such as R4Q) in the folder above, with the Files app.";
-#else
         const char* title = "Drop a texture pack here";
         const char* detail = "A pack's folder (such as R4Q) or its .zip file: it is copied into the folder above.";
-#endif
         DrawLabel(draw, fonts.label, {cx - TextSize(fonts.label, title).x * 0.5f, pos.y + Dp(54)}, Col(color::text), title);
         DrawLabel(draw, fonts.caption, {cx - TextSize(fonts.caption, detail).x * 0.5f, pos.y + Dp(54) + FontSize(fonts.label) + Dp(4)},
                   Col(color::muted), detail);
