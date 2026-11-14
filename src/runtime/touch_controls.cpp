@@ -199,25 +199,39 @@ void TouchControls::Detach()
     id_ = 0;
 }
 
-void TouchControls::Layout(float width, float height)
+void TouchControls::Layout(float width, float height, float left, float right)
 {
     width_ = width;
     height_ = height;
+    left_ = left;
+    right_ = right;
+    // The controls sit between the safe area's side margins (a notch in
+    // landscape), as in the launcher's layout editor; the dialog stays centred.
+    const bool inset = width - left - right >= std::min(width, height);
+    const float area = inset ? width - left - right : width;
+    const float shift = inset ? left : 0.0f;
+    const auto place = [&](TouchItem item) {
+        auto c = PlaceTouchItem(item, placements_[std::size_t(item)], area, height);
+        c.x += shift;
+        return c;
+    };
     // The saved layout (controls.touch_layout), in short sides of the screen:
     // the controls keep their size and their distance from the thumbs on
     // every screen.
     static_assert(int(TouchQuit) == int(Quit) && int(TouchA) == int(A) && int(TouchSwap) == int(Item),
                   "TouchControls::Control follows bootstrap/touch_layout.h");
     for (int n = A; n <= Quit; ++n) {
-        const auto c = PlaceTouchItem(TouchItem(n), placements_[std::size_t(n)], width, height);
+        const auto c = place(TouchItem(n));
         buttons_[n] = {c.x, c.y, c.r};
     }
-    const auto pad = TouchDpadButtons(PlaceTouchItem(TouchDpad, placements_[TouchDpad], width, height));
+    const auto pad = TouchDpadButtons(place(TouchDpad));
     for (int n = 0; n < 4; ++n) buttons_[Up + n] = {pad[std::size_t(n)].x, pad[std::size_t(n)].y, pad[std::size_t(n)].r};
-    const auto stick = PlaceTouchItem(TouchStick, placements_[TouchStick], width, height);
+    const auto stick = place(TouchStick);
     stickRadius_ = stick.r;
     stickBase_ = {stick.x, stick.y, stick.r};
-    stickZone_ = TouchStickZone(stick, width, height);
+    stickZone_ = TouchStickZone({stick.x - shift, stick.y, stick.r}, area, height);
+    stickZone_.x0 += shift;
+    stickZone_.x1 += shift;
     const float s = std::min(width, height);
     const float dialogW = 0.70f * s, dialogH = 0.34f * s;
     dialog_ = {width * 0.5f - dialogW * 0.5f, height * 0.5f - dialogH * 0.5f,
@@ -243,10 +257,13 @@ int TouchControls::ButtonAt(float x, float y) const
     return best;
 }
 
-void TouchControls::Service(float width, float height)
+void TouchControls::Service(float width, float height, float left, float right)
 {
     if (width <= 0 || height <= 0) return;
-    if (width != width_ || height != height_) Layout(width, height);
+    if (width != width_ || height != height_ || left != left_ || right != right_) {
+        Layout(width, height, left, right);
+        if (left > 0 || right > 0) Log("controls inside the safe area: %.0f and %.0f pixels kept clear at the sides", left, right);
+    }
     const bool first = !loggedService_;
     if (first) {
         loggedService_ = true;

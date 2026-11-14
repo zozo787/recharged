@@ -54,7 +54,9 @@ public:
 
     // Once per frame with the drawing surface's size in pixels: applies the
     // fingers to the virtual gamepad.
-    void Service(float width, float height);
+    // `left` and `right`: the screen's safe area margins on the surface (a
+    // notch or a Dynamic Island in landscape), which the controls keep clear of.
+    void Service(float width, float height, float left = 0, float right = 0);
     bool Visible() const { return visible_; }
     // The virtual gamepad's SDL joystick id (0 when SDL refused it), which the
     // input owner gives the touch player's channel (NativePlayers::touch_id).
@@ -77,7 +79,7 @@ private:
         bool pointer = false; // it points the Wii Remote
     };
     static bool SDLCALL Watch(void* self, SDL_Event* event);
-    void Layout(float width, float height);
+    void Layout(float width, float height, float left, float right);
     int ButtonAt(float x, float y) const; // pixels; None outside every button
     void Attach();
     void Detach();
@@ -99,6 +101,7 @@ private:
     float opacity_ = 1.0f;
     bool haptics_ = true;
     float width_ = 0, height_ = 0;
+    float left_ = 0, right_ = 0; // safe area margins (Service)
     std::array<TouchCircle, ControlCount> buttons_{};
     TouchRect stickZone_{}; // where a finger that lands takes the stick
     TouchCircle stickBase_{}; // the stick's resting place

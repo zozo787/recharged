@@ -6754,9 +6754,19 @@ private:
         const bool over_panel = mouse.x >= panel_min.x && mouse.x < panel_max.x && mouse.y >= panel_min.y
             && mouse.y < panel_max.y;
 
+        // The controls sit between the safe area's side margins (a notch in
+        // landscape), as in the game (runtime/touch_controls.cpp): placed in
+        // that area, then shifted by its left margin.
+        const bool inset = w - inset_left_ - inset_right_ >= std::min(w, h);
+        const float area = inset ? w - inset_left_ - inset_right_ : w;
+        const float shift = inset ? inset_left_ : 0.0f;
+        const auto place = [&](std::size_t n) {
+            auto c = PlaceTouchItem(TouchItem(n), touch_edit_[n], area, h);
+            c.x += shift;
+            return c;
+        };
         std::array<TouchCircle, TouchItemCount> circles;
-        for (std::size_t n = 0; n < TouchItemCount; ++n)
-            circles[n] = PlaceTouchItem(TouchItem(n), touch_edit_[n], w, h);
+        for (std::size_t n = 0; n < TouchItemCount; ++n) circles[n] = place(n);
         // A finger that lands on a control (a little outside it too, the
         // nearest one) selects it and drags it while it moves.
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !over_panel)
@@ -6782,10 +6792,11 @@ private:
             if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
             {
                 const float r = circles[item].r;
-                const float x = std::clamp(mouse.x + touch_grab_.x, std::min(r, w * 0.5f), std::max(w - r, w * 0.5f));
+                const float x = std::clamp(mouse.x + touch_grab_.x - shift, std::min(r, area * 0.5f),
+                                           std::max(area - r, area * 0.5f));
                 const float y = std::clamp(mouse.y + touch_grab_.y, std::min(r, h * 0.5f), std::max(h - r, h * 0.5f));
-                touch_edit_[item] = TouchPlacementAt(x, y, touch_edit_[item].scale, w, h);
-                circles[item] = PlaceTouchItem(TouchItem(item), touch_edit_[item], w, h);
+                touch_edit_[item] = TouchPlacementAt(x, y, touch_edit_[item].scale, area, h);
+                circles[item] = place(item);
             }
             else touch_drag_ = -1;
         }
@@ -6802,8 +6813,9 @@ private:
         const ImU32 fill = white(40), line = white(140), text = white(220);
         if (touch_selected_ == int(TouchStick))
         {
-            const auto zone = TouchStickZone(circles[TouchStick], w, h);
-            draw->AddRectFilled({zone.x0, zone.y0}, {zone.x1, zone.y1}, Col(color::accent, 0.07f), Dp(10));
+            const auto& stick = circles[TouchStick];
+            const auto zone = TouchStickZone({stick.x - shift, stick.y, stick.r}, area, h);
+            draw->AddRectFilled({zone.x0 + shift, zone.y0}, {zone.x1 + shift, zone.y1}, Col(color::accent, 0.07f), Dp(10));
         }
         for (std::size_t n = 0; n < TouchItemCount; ++n)
         {

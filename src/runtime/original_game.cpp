@@ -1521,7 +1521,19 @@ int mscharged::RunOriginalGame(int argc, char** argv,
                 if(const auto rate=frameRate.Sample(frames,now)) hostOverlay->SetRate(*rate);
                 const auto size=aurora_get_window_size();
 #if defined(MSCHARGED_PLATFORM_IOS)
-                if(touchControls) touchControls->Service(float(size.native_fb_width),float(size.native_fb_height));
+                if(touchControls) {
+                    // The safe area's side margins (a notch in landscape), in surface pixels.
+                    float left=0,right=0;
+                    SDL_Rect safe{};
+                    int windowWidth=0,windowHeight=0;
+                    if(SDL_GetWindowSize(host.window,&windowWidth,&windowHeight)&&windowWidth>0
+                       &&SDL_GetWindowSafeArea(host.window,&safe)) {
+                        const float scale=float(size.native_fb_width)/float(windowWidth);
+                        left=float(safe.x)*scale;
+                        right=float(windowWidth-safe.x-safe.w)*scale;
+                    }
+                    touchControls->Service(float(size.native_fb_width),float(size.native_fb_height),left,right);
+                }
 #endif
                 hostOverlay->Update(size.native_fb_width,size.native_fb_height,now);
             }

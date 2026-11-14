@@ -88,7 +88,7 @@ essayé), **À faire**, **Abandonné**.
 | F13 | Manette Bluetooth (MFi, DualSense, Xbox…) ; elle remplace les contrôles tactiles quand elle se connecte | Validé (DualSense, iPhone Duo et iPad Pro M5) |
 | F14 | Quitter le jeu depuis l'écran tactile, avec confirmation | Validé (ferme l'app, § 5) |
 | F15 | Jeu fluide (60 FPS) sur l'appareil de test | Validé (120 FPS possible) |
-| F16 | Fonctionne sur les autres iPhone et iPad sous iOS 18+ | iPad Pro M5 validé ; autres iPhone à tester |
+| F16 | Fonctionne sur les autres iPhone et iPad sous iOS 18+ | iPad Pro M5 et iPhone 14 Plus validés (contrôles hors de l'encoche : à vérifier) ; autres iPhone à tester |
 | F17 | Disque GameCube de l'option Super Team importable | Validé (iPhone Duo ; sur iOS, le sélecteur ne s'ouvre qu'avec « Choose image… ») |
 | F18 | Vibration légère à chaque appui sur un contrôle tactile, désactivable | Validé (iPhone Duo ; sans effet sur iPad, sans Taptic Engine) |
 | F19 | Vibrations du jeu (rumble de la Wiimote) ressenties dans l'iPhone avec l'écran tactile | Validé (iPhone Duo : réalistes en jeu) |
@@ -289,6 +289,14 @@ essayé), **À faire**, **Abandonné**.
   prend le stick suit le stick (retournée s'il passe à droite ou en haut).
   Format : `controls.touch_layout = a:rb,-200,-180,100 | …` ; vide = défaut ;
   une valeur illisible est ignorée.
+- **Zone sûre** : les contrôles sont placés entre les marges latérales de la
+  zone sûre (encoche ou Dynamic Island en paysage), décalés de la marge
+  gauche : dans le jeu (`Service` reçoit les marges lues par
+  `SDL_GetWindowSafeArea`, converties en pixels de la surface) comme dans
+  l'éditeur (`inset_left_`, `inset_right_`). Sans encoche (iPhone Duo, iPad),
+  marges nulles : rien ne bouge. Les marges du haut et du bas (barre
+  d'accueil) ne sont pas appliquées, pour ne pas déplacer les dispositions
+  réglées. Journal : « controls inside the safe area: … ».
 - **Éditeur** (launcher, plein écran) : glisser pour déplacer, toucher pour
   sélectionner puis − / + pour la taille, curseur Opacity, interrupteur
   Vibration, Reset, Cancel, Save.
@@ -545,11 +553,14 @@ gestion de l'appareil.
 - **iPad Pro M5** : validé : affichage aux bonnes dimensions, choix du jeu,
   contrôles tactiles, DualSense (les contrôles tactiles disparaissent quand
   elle joue).
+- **iPhone 14 Plus** (encoche) : le jeu tourne (`.ipa` de `14af582`) ; les
+  contrôles tactiles passaient sous l'encoche, d'où la zone sûre (§ 4.6).
 - Manette **DualSense** : reconnue, le jeu répond.
 
 ## 8. Reste à faire
 
-- Essais sur d'autres iPhone (F16), dont un modèle à 3 Go (N3).
+- Essais sur d'autres iPhone (F16), dont un modèle à 3 Go (N3) ; iPhone 14
+  Plus fait.
 - Essai de la notification de nouvelle version (F20, § 4.9) : publier dans
   le fork une version de test (étiquette `v1.1.8`, publiée : ni brouillon
   ni préversion, que la recherche ignore) avec un fichier `recharged-1.1.8-ios-arm64.ipa` ; au
@@ -683,4 +694,5 @@ renommés au format du projet le même jour).
 | L24 | 11-14 | Fusion de `main` du projet d'origine (1.1.7) dans `ios-port` : 3 conflits dans `src/launcher/main.cpp` (inclusions, `CurrentBuild()` déplacé dans `launcher/current_build.h` où le paquet `ios` est reporté, carte Updates réécrite et gardée masquée sur iOS) | `2704410` | CI : `.ipa` 1.1.7 ; Build binaries vert (Linux, Steam Deck, Windows, macOS) ; `ctest --preset debug` 61/61 ; appareil : la 1.1.7 tourne sur l'iPhone Duo | Terminé |
 | L25 | 11-14 | Libellés des contrôles tactiles en anglais, demandé pour les pull requests : « Tacle » → « Hit », « Changer » → « Swap » (noms déjà utilisés dans `controls.touch_layout`), « Quitter le jeu ? / L'application va se fermer. » → « Quit the game? / The app will close. », Annuler / Quitter → Cancel / Quit ; éditeur du launcher et journal (« Quit: … ») | `f09c27b` | Appareil : libellés dans leurs boutons, Cancel et Quit, éditeur | Terminé |
 | L26 | 11-14 | Guide d'accueil propre à iOS (`assets/launcher/welcome-ios.md`), mis par le paquet à la place du guide de bureau ; textes vérifiés contre le launcher actuel | `14af582` | À essayer sur l'appareil (ampoule à côté de Revert) | En cours |
-| L27 | 11-14 | Réseau sur iOS par NSURLSession (mises à jour, joueurs en ligne, rapports de match) ; paquets `.ipa` reconnus dans les versions publiées (test) ; barre et fenêtre des mises à jour comme sur PC, avec la page de la version au lieu de l'installation ; carte Updates de la page Advanced | ce commit | Linux : `ctest --preset debug` 61/61 ; appareil : version de test du fork à publier | En cours |
+| L27 | 11-14 | Réseau sur iOS par NSURLSession (mises à jour, joueurs en ligne, rapports de match) ; paquets `.ipa` reconnus dans les versions publiées (test) ; barre et fenêtre des mises à jour comme sur PC, avec la page de la version au lieu de l'installation ; carte Updates de la page Advanced | `383f2f8` `59c5ee7` `3042d68` | Linux : `ctest --preset debug` 61/61 ; appareil : barre des mises à jour revenue ; compteur de joueurs absent (serveur en `http`, à voir) ; version de test du fork à publier | En cours |
+| L28 | 11-14 | Contrôles tactiles hors de l'encoche : placés entre les marges latérales de la zone sûre, dans le jeu et dans l'éditeur | ce commit | Appareil : iPhone 14 Plus (contrôles sous l'encoche avant) | En cours |
