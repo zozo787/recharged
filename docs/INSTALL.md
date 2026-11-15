@@ -1,8 +1,9 @@
 # Install and play
 
-Ready-made packages for Windows, Linux, Steam Deck and macOS. You do not need
-to build anything. On a Steam Deck, follow the [Steam Deck guide](STEAM_DECK.md)
-instead.
+Ready-made packages for Windows, Linux, Steam Deck, macOS, iPhone and iPad.
+You do not need to build anything. On a Steam Deck, follow the
+[Steam Deck guide](STEAM_DECK.md) instead, and on an iPhone or iPad the
+[iPhone and iPad guide](IOS.md).
 
 > **The packages contain no game files.** You need your own copy of
 > **Mario Strikers Charged** as an `.iso`, `.rvz` or `.wbfs` disc image: the
@@ -21,6 +22,7 @@ and download the package for your system:
 | Linux, x86_64 | `recharged-<version>-linux-x86_64.tar.gz` |
 | Steam Deck, SteamOS 3.7+ | `recharged-<version>-steamdeck-x86_64.tar.gz` |
 | macOS 15+, Apple Silicon or Intel | `recharged-<version>-macos-universal.dmg` |
+| iPhone, iPad, iOS 18+ ([guide](IOS.md)) | `recharged-<version>-ios-arm64.ipa` |
 
 `SHA256SUMS` on the release page lists the checksums.
 

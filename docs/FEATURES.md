@@ -65,6 +65,12 @@ come from the reconstructed source, unchanged.
   ([#60](https://github.com/previouslevelgames/recharged/issues/60)).
 - **Mouse beside a controller**: a single player on a Wii Remote or gamepad
   can also point and press A/B with the mouse.
+- **Touch screen** (iPhone and iPad): on-screen controls with a stick, the
+  Wii Remote's and Nunchuk's buttons and the D-pad; a finger points the
+  Remote. Their place, size and opacity are set in the launcher, and on an
+  iPhone the game's rumble and a light tap on each press are felt in the
+  phone. A Bluetooth controller takes over as soon as it connects
+  ([iPhone and iPad guide](IOS.md#5-playing)).
 
 ### Default bindings
 

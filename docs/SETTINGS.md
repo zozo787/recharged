@@ -24,7 +24,8 @@ Everything stays in the program folder:
 
 Updates replace only the program's own files; these stay. If the program
 folder is not writable, the log goes to your user's application data folder
-instead.
+instead. On iPhone and iPad, all of this is in the app's own folder, shown by
+the Files app ([iPhone and iPad guide](IOS.md#6-your-files)).
 
 ## Game images
 
@@ -498,6 +499,22 @@ test build of each, newest version first; choose one to read its notes and
 switch to it (`[launcher] test_build`). You keep getting the updates of the
 test build you chose, then its release; the launcher never moves you to
 another one by itself.
+
+**iPhone and iPad** cannot update themselves: the launcher shows the new
+release and **Open release page** opens it, to install the new `.ipa` the
+way the first one was ([iPhone and iPad guide](IOS.md#7-updates)).
+
+## iPhone and iPad
+
+| Key | Values | Default |
+| --- | --- | --- |
+| `[controls] player1` … `player4` | also `touch`: the on-screen controls | player 1: `touch` |
+| `[controls] touch_layout` | where each on-screen control sits and its size, written by the layout editor | empty: the default layout |
+| `[controls] touch_opacity` | 20-100 (%) | 100 |
+| `[controls] touch_haptics` | `true` / `false`: a light tap on each press | `true` |
+
+The picture defaults to no antialiasing there (`[display] antialiasing =
+off`), which keeps a phone at full speed.
 
 ## Command-line options
 

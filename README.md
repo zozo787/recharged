@@ -4,8 +4,8 @@
 [![Downloads](https://img.shields.io/github/downloads/previouslevelgames/recharged/total?label=downloads)](https://github.com/previouslevelgames/recharged/releases)
 [![License CC0 1.0](https://img.shields.io/badge/license-CC0%201.0-lightgrey)](LICENSE)
 
-Play **Mario Strikers Charged** natively on Windows, Linux, macOS and Steam
-Deck. **Recharged** compiles the reconstructed source code of the original
+Play **Mario Strikers Charged** natively on Windows, Linux, macOS, Steam
+Deck, iPhone and iPad. **Recharged** compiles the reconstructed source code of the original
 Wii game into a real PC program. It is not an emulator: the game's own code
 runs unchanged, and Recharged supplies what the Wii hardware used to provide:
 graphics, sound, controllers, disc access and saves.
@@ -59,6 +59,8 @@ macOS 15+, Apple Silicon and Intel<br>
 
 The [install guide](docs/INSTALL.md) covers the first start on Windows and
 macOS. Once installed, the launcher keeps Recharged up to date in place.
+On an iPhone or iPad, install `ios-arm64.ipa` with a sideloading tool: see the
+[iPhone and iPad guide](docs/IOS.md).
 
 ## Highlights
 
@@ -148,6 +150,7 @@ and [CONTRIBUTING](CONTRIBUTING.md) for how to report it.
 | --- | --- |
 | [Install guide](docs/INSTALL.md) | [Architecture](docs/ARCHITECTURE.md): how Recharged works |
 | [Steam Deck guide](docs/STEAM_DECK.md) | [Building from source](docs/BUILDING.md) |
+| [iPhone and iPad guide](docs/IOS.md) | |
 | [Features and controls](docs/FEATURES.md) | [Dependencies](extern/README.md) |
 | [Settings](docs/SETTINGS.md): Wii Remotes, saves, updates, options | [Licenses](LICENSES/README.md) |
 | [Troubleshooting](docs/TROUBLESHOOTING.md) | [Contributing](CONTRIBUTING.md): reports, ideas, pull requests |

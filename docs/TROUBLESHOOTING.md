@@ -4,7 +4,8 @@ Solutions to the problems that come up most. If yours is not here, open an
 [issue](https://github.com/previouslevelgames/recharged/issues) and attach
 `logs/recharged.log` from the program folder (see
 [reporting a problem](#reporting-a-problem)). Steam Deck specifics are at the
-end of the [Steam Deck guide](STEAM_DECK.md#troubleshooting).
+end of the [Steam Deck guide](STEAM_DECK.md#troubleshooting), iPhone and iPad
+ones at the end of the [iPhone and iPad guide](IOS.md#8-troubleshooting).
 
 ## The launcher does not accept my disc
 

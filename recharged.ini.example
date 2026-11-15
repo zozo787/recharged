@@ -114,11 +114,18 @@ mute = false
 # gamepad1-gamepad4 (the n-th connected Xbox, PlayStation or other standard
 # gamepad, played as Wii Remote + Nunchuk) or off. Players fill in order and
 # each device plays once. Controllers missing when the game starts are left
-# out and the others close up in order.
+# out and the others close up in order. On iPhone and iPad also touch (the
+# on-screen controls, player 1's default there).
 player1 = keyboard
 player2 = off
 player3 = off
 player4 = off
+# iPhone and iPad: where each on-screen control sits and its size (written by
+# the launcher's layout editor; empty: the default layout), their opacity
+# (20-100) and a light tap on each press.
+touch_layout =
+touch_opacity = 100
+touch_haptics = true
 # When player 1 is a Wii Remote or gamepad and plays alone, the mouse also
 # points for it (left click A, right click B); the controller keeps working.
 mouse_pointer = true
